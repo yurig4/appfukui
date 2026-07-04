@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORCA 6 Advanced Lab</title>
+    <!-- Tailwind CSS para Estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 3Dmol.js para Visualização de Moléculas -->
+    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .mol-container { width: 100%; height: 450px; position: relative; background: #0f172a; border-radius: 1.5rem; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px;}
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
+        .drop-zone--over { border-color: #6366f1 !important; background-color: #f5f3ff !important; }
+        .opt-disabled { opacity: 0.4; cursor: not-allowed !important; pointer-events: none; }
+        .pulse-indigo { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
+        <!-- Cabeçalho -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-8">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg">
+                    <i data-lucide="microscope" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight">ORCA 6 Advanced Lab</h1>
+                    <p class="text-slate-500 text-sm italic text-indigo-500">Analytics Termodinâmico e Espectral</p>
+                </div>
+            </div>
+            
+            <div class="flex bg-slate-100 p-1 rounded-xl mt-4 md:mt-0 overflow-x-auto w-full md:w-auto">
+                <button onclick="switchTab('text')" id="tab-text" class="whitespace-nowrap flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition-all">Resumo</button>
+                <button onclick="switchTab('charts')" id="tab-charts" class="whitespace-nowrap flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all hover:text-slate-700">Gráficos</button>
+                <button onclick="switchTab('3d')" id="tab-3d" class="whitespace-nowrap flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all hover:text-slate-700">3D Viewer</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Barra Lateral -->
+            <aside class="lg:col-span-4 space-y-6">
+                <div id="dropZone" class="bg-white p-6 rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition-all text-center cursor-pointer group relative">
+                    <input type="file" id="fileInput" accept=".out,.txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <div class="py-4">
+                        <div class="bg-indigo-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-600"></i>
+                        </div>
+                        <h2 class="text-lg font-bold text-slate-700">Ficheiro .out</h2>
+                        <p class="text-xs text-slate-400 mt-1">Arraste o ficheiro ou clique para explorar</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">
+                            <i data-lucide="layout-dashboard" class="w-5 h-5 text-indigo-500"></i> Opções de Resumo
+                        </h2>
+                        <div class="flex gap-2">
+                            <button onclick="toggleAllOptions(true)" class="text-indigo-600 hover:bg-indigo-50 p-1 rounded transition-colors" title="Selecionar Todos"><i data-lucide="check-square" class="w-4 h-4"></i></button>
+                            <button onclick="toggleAllOptions(false)" class="text-slate-400 hover:bg-slate-50 p-1 rounded transition-colors" title="Limpar Todos"><i data-lucide="square" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                    <div id="optionsContainer" class="space-y-1"></div>
+                </div>
+
+                <div id="statusAlert" class="hidden p-4 rounded-2xl border-l-4 text-sm shadow-sm transition-all"></div>
+                
+                <button onclick="downloadOutput()" id="downloadBtn" class="hidden w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    <i data-lucide="download" class="w-6 h-6"></i> Exportar Resumo
+                </button>
+            </aside>
+
+            <!-- Área Principal -->
+            <main class="lg:col-span-8">
+                <!-- Visualização de Texto -->
+                <div id="textView" class="bg-slate-900 rounded-3xl shadow-2xl h-[700px] flex flex-col border border-slate-800 overflow-hidden relative">
+                    <div class="bg-slate-800 px-6 py-4 flex items-center border-b border-slate-700">
+                        <span class="text-slate-400 font-mono text-[10px] uppercase font-bold italic">Terminal Lab Analytics</span>
+                    </div>
+                    <pre id="outputArea" class="flex-1 p-8 overflow-auto font-mono text-sm text-emerald-400 leading-relaxed custom-scrollbar whitespace-pre-wrap break-words">Aguardando ficheiro do ORCA 6 para processamento...</pre>
+                </div>
+
+                <!-- Área de Gráficos -->
+                <div id="chartsView" class="hidden space-y-6 overflow-auto h-[700px] pr-2 custom-scrollbar flex flex-col">
+                    
+                    <!-- Diagrama de Níveis de Energia (Orbitais) -->
+                    <div id="energyLevelsContainer" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200 shrink-0">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-md font-bold flex items-center gap-2"><i data-lucide="layers" class="text-indigo-500"></i> Diagrama de Orbitais Moleculares (eV)</h3>
+                            <button onclick="captureChart(energyChart, 'Orbitais')" class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all text-xs font-bold border border-slate-100">
+                                <i data-lucide="camera" class="w-4 h-4"></i> Capturar
+                            </button>
+                        </div>
+                        <div class="h-[450px] w-full relative"><canvas id="energyChart"></canvas></div>
+                    </div>
+
+                    <!-- UV-Vis Section -->
+                    <div id="uvChartContainer" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200 shrink-0">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-md font-bold flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-indigo-500"></i> Espectro UV-Vis (200-700 nm)</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="captureChart(uvChart, 'UV-Vis')" class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all text-xs font-bold border border-slate-100">
+                                    <i data-lucide="camera" class="w-4 h-4"></i> Capturar
+                                </button>
+                                <div class="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-xl">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Alargamento (nm): <span id="sigmaValue" class="text-indigo-600">10</span></label>
+                                    <input type="range" id="sigmaRange" min="2" max="40" value="10" step="1" class="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none accent-indigo-600" oninput="document.getElementById('sigmaValue').innerText = this.value; if(fileContent) updateCharts(cache.energies, cache.tddft, cache.ir, cache.orbitals);">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="h-[350px] w-full relative"><canvas id="uvChart"></canvas></div>
+                    </div>
+                    
+                    <!-- IR Section -->
+                    <div id="irChartContainer" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200 shrink-0">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-md font-bold flex items-center gap-2"><i data-lucide="activity" class="text-rose-500"></i> Espectro Infravermelho</h3>
+                            <button onclick="captureChart(irChart, 'IR')" class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all text-xs font-bold border border-slate-100">
+                                <i data-lucide="camera" class="w-4 h-4"></i> Capturar
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-4 mb-4 bg-slate-50 p-3 rounded-xl w-fit">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Alargamento (cm⁻¹): <span id="sigmaIRValue" class="text-rose-500">20</span></label>
+                            <input type="range" id="sigmaIRRange" min="5" max="100" value="20" step="5" class="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none accent-rose-500" oninput="document.getElementById('sigmaIRValue').innerText = this.value; if(fileContent) updateCharts(cache.energies, cache.tddft, cache.ir, cache.orbitals);">
+                        </div>
+                        <div class="h-[300px] w-full relative"><canvas id="irChart"></canvas></div>
+                    </div>
+                    
+                    <!-- Convergence Section -->
+                    <div id="optChartContainer" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200 shrink-0">
+                        <h3 class="text-md font-bold mb-4 flex items-center gap-2"><i data-lucide="trending-down" class="text-emerald-500"></i> Convergência de Energia</h3>
+                        <div class="h-[200px] w-full relative"><canvas id="optChart"></canvas></div>
+                    </div>
+
+                    <div id="noChartsMessage" class="hidden flex-1 flex-col items-center justify-center text-slate-400 min-h-[400px]">
+                        <i data-lucide="bar-chart" class="w-16 h-16 mb-4 opacity-50"></i>
+                        <p class="font-bold text-center text-sm">Nenhum dado espectral ou de otimização disponível.</p>
+                    </div>
+                </div>
+
+                <!-- Área do Visualizador 3D -->
+                <div id="view3d" class="hidden space-y-4 h-[700px] flex flex-col">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between shadow-sm gap-4">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <select id="colorMode" onchange="applyColorMode()" class="bg-slate-100 border-none rounded-lg text-xs font-bold p-2 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                                <option value="element">Elemento (CPK)</option>
+                                <option value="mulliken">Cargas Mulliken</option>
+                                <option value="loewdin">Cargas Löwdin</option>
+                            </select>
+                            
+                            <label class="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-100 transition-colors">
+                                <input type="checkbox" id="showLabels" onchange="applyColorMode()" class="w-3 h-3 rounded accent-indigo-600">
+                                <span>Rótulos</span>
+                            </label>
+
+                            <button onclick="clearMeasurements()" class="flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-all border border-rose-100">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Limpar
+                            </button>
+
+                            <button onclick="capture3D()" class="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100">
+                                <i data-lucide="camera" class="w-4 h-4"></i> Capturar 3D
+                            </button>
+                        </div>
+                        
+                        <div id="geomStepper" class="hidden flex-1 flex items-center gap-3 bg-indigo-50/50 p-1.5 rounded-xl border border-indigo-100 min-w-[200px]">
+                            <button id="playBtn" onclick="toggleAutoPlay()" class="p-2 bg-white text-indigo-600 rounded-lg shadow-sm hover:bg-indigo-600 hover:text-white transition-all">
+                                <i data-lucide="play" id="playIcon" class="w-4 h-4"></i>
+                            </button>
+                            <span class="text-[10px] font-black text-indigo-600 uppercase ml-2">Ciclo:</span>
+                            <input type="range" id="stepRange" min="0" max="0" value="0" step="1" class="flex-1 h-1.5 bg-indigo-200 rounded-lg appearance-none accent-indigo-600" oninput="changeGeomStep(this.value)">
+                            <span id="stepDisplay" class="text-xs font-bold text-indigo-700 min-w-[40px] text-center">0/0</span>
+                        </div>
+                    </div>
+                    
+                    <div id="molContainer" class="mol-container shadow-inner border border-slate-200 flex-1"></div>
+                    
+                    <div id="stepEnergyDisplay" class="hidden flex justify-between items-center bg-slate-900/5 p-3 rounded-2xl border border-slate-200 mt-2">
+                        <div class="flex items-center gap-4">
+                            <span class="text-[10px] text-slate-500 font-bold uppercase">Passo: <span id="currentStepIdx" class="text-indigo-600">0</span></span>
+                            <span class="text-[10px] text-slate-400 font-mono">Energia: <span id="currentStepEnergy" class="text-slate-800 font-bold">0</span> Eh</span>
+                        </div>
+                        <div id="selectionStatus" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse hidden">
+                            Seleção: 0 átomos
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // --- ESTADO GLOBAL ---
+        const EH_TO_EV = 27.2114;
+        let fileContent = "", fileName = "", optChart = null, uvChart = null, irChart = null, energyChart = null, viewer = null;
+        let mullikenCharges = [], loewdinCharges = [];
+        let allGeometries = [], cache = { energies: [], tddft: [], ir: [], orbitals: [], thermo: {} };
+        let playbackInterval = null, isPlaying = false;
+        let selectedAtomsIndices = [];
+
+        const options = {
+            energy: { label: "Energia Final", active: true, disabled: true },
+            optHistory: { label: "Histórico Otimização", active: true, disabled: true },
+            orbitals: { label: "Orbitais HOMO/LUMO Extended", active: true, disabled: true },
+            tddft: { label: "Espectro TD-DFT", active: true, disabled: true },
+            geometry: { label: "Geometria Final", active: true, disabled: true },
+            charges: { label: "Cargas Mulliken/Löwdin", active: true, disabled: true },
+            thermo: { label: "Dados Termodinâmicos", active: true, disabled: true }
+        };
+
+        // --- FUNÇÕES DE UI ---
+
+        function renderOptions() {
+            const container = document.getElementById('optionsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            Object.entries(options).forEach(([key, opt]) => {
+                const label = document.createElement('label');
+                label.className = `flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors ${opt.disabled ? 'opt-disabled' : ''}`;
+                label.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${opt.active && !opt.disabled ? 'checked' : ''} ${opt.disabled ? 'disabled' : ''} onchange="updateOption('${key}')" class="w-4 h-4 rounded accent-indigo-600">
+                        <span class="text-xs font-bold text-slate-600 uppercase tracking-tight">${opt.label}</span>
+                    </div>
+                    <div id="found-${key}" class="text-slate-300 opacity-50">${!opt.disabled ? '<i data-lucide="check-circle" class="text-green-500 w-3 h-3"></i>' : '<i data-lucide="circle" class="w-3 h-3"></i>'}</div>
+                `;
+                container.appendChild(label);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function updateOption(key) { options[key].active = !options[key].active; renderSummaryFromCache(); }
+        function toggleAllOptions(val) { Object.keys(options).forEach(k => { if (!options[k].disabled) options[k].active = val; }); renderOptions(); renderSummaryFromCache(); }
+
+        function renderSummaryFromCache() {
+            if (!fileContent) return;
+            let s = ["============================================================", `ORCA 6 ANALYTICS - ${fileName}`, "============================================================\n"];
+            const term = fileContent.includes("ORCA TERMINATED NORMALLY");
+            const tMatch = fileContent.match(/TOTAL RUN TIME:\s+(.*)/);
+            s.push("[STATUS]", `Finalizado: ${term ? "SIM ✅" : "NÃO ❌"}`, `Tempo: ${tMatch ? tMatch[1] : "N/A"}\n`);
+
+            if (options.energy.active && !options.energy.disabled) s.push("[ENERGY]", `Energia Final: ${cache.energies.slice(-1)[0].toFixed(10)} Eh\n`);
+            
+            if (options.optHistory.active && !options.optHistory.disabled) {
+                s.push("[HISTÓRICO DE OTIMIZAÇÃO]");
+                cache.energies.forEach((en, i) => s.push(`Passo ${(i+1).toString().padEnd(3)} | ${en.toFixed(10)} | ΔE: ${i===0?'---':(en-cache.energies[i-1]).toFixed(8)}`));
+                s.push("");
+            }
+
+            if (options.orbitals.active && !options.orbitals.disabled) {
+                s.push("[ORBITAIS DE FRONTEIRA]");
+                const occ = cache.orbitals.filter(o => o.occ > 0).sort((a,b) => b.index-a.index);
+                const virt = cache.orbitals.filter(o => o.occ === 0).sort((a,b) => a.index-b.index);
+                const printO = (l, o) => { if(o) s.push(`${l.padEnd(8)} | ${o.energy.toFixed(5).padEnd(10)} Eh | ${(o.energy*EH_TO_EV).toFixed(3)} eV`); };
+                printO("LUMO+2", virt[2]); printO("LUMO+1", virt[1]); printO("LUMO", virt[0]);
+                s.push("-".repeat(30));
+                printO("HOMO", occ[0]); printO("HOMO-1", occ[1]); printO("HOMO-2", occ[2]);
+                if (occ[0] && virt[0]) s.push(`\nGAP (H-L): ${(virt[0].energy-occ[0].energy).toFixed(5)} Eh (${((virt[0].energy-occ[0].energy)*EH_TO_EV).toFixed(3)} eV)\n`);
+            }
+
+            if (options.tddft.active && !options.tddft.disabled) {
+                s.push("[TD-DFT ANALYTICS]", "λ (nm)     | fosc       | Energia (eV)");
+                cache.tddft.forEach(d => s.push(`${d.nm.toFixed(2).padEnd(10)} | ${d.fosc.toFixed(4).padEnd(10)} | ${d.ev.toFixed(3)}`));
+                s.push("");
+            }
+
+            if (options.thermo.active && !options.thermo.disabled) {
+                s.push("[DADOS TERMODINÂMICOS]");
+                if(cache.thermo.h) s.push(`Entalpia (H): ${cache.thermo.h} Eh`);
+                if(cache.thermo.g) s.push(`Gibbs (G): ${cache.thermo.g} Eh\n`);
+            }
+
+            if (options.charges.active && !options.charges.disabled) {
+                s.push("[CARGAS ATÓMICAS]");
+                const list = loewdinCharges.length > 0 ? loewdinCharges : mullikenCharges;
+                list.forEach(c => s.push(`${c.element}${c.index+1}: ${c.charge.toFixed(4)}`));
+                s.push("");
+            }
+
+            if (options.geometry.active && !options.geometry.disabled && allGeometries.length) {
+                s.push("[GEOMETRIA FINAL (XYZ)]");
+                const lastXYZ = allGeometries[allGeometries.length-1].split('\n').slice(2);
+                lastXYZ.forEach(line => { if(line.trim()) s.push(line.trim()); });
+                s.push("");
+            }
+            document.getElementById('outputArea').textContent = s.join('\n');
+        }
+
+        // --- MOTOR DE PARSING ---
+
+        function parseORCA() {
+            if (!fileContent) return;
+            cache = { energies: [], tddft: [], ir: [], orbitals: [], thermo: {} };
+            mullikenCharges = []; loewdinCharges = []; allGeometries = [];
+            const findA = (re) => [...fileContent.matchAll(re)];
+            const findL = (re) => { const m = findA(re); return m.length ? m[m.length-1] : null; };
+
+            try {
+                cache.energies = findA(/FINAL SINGLE POINT ENERGY\s+(-?\d+\.\d+)/g).map(m => parseFloat(m[1]));
+                const lastOrbH = fileContent.lastIndexOf("ORBITAL ENERGIES");
+                if (lastOrbH !== -1) cache.orbitals = [...fileContent.substring(lastOrbH, lastOrbH + 30000).matchAll(/^\s*(\d+)\s+([012]\.\d+)\s+(-?\d+\.\d+)\s+/gm)].map(m => ({ index: parseInt(m[1]), occ: parseFloat(m[2]), energy: parseFloat(m[3]) }));
+                const absP = fileContent.lastIndexOf("ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS");
+                if (absP !== -1) cache.tddft = [...fileContent.substring(absP, absP + 15000).matchAll(/\d+-\d+[A-Z]\s+->\s+\d+-\d+[A-Z]\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)/g)].map(m => ({ ev: parseFloat(m[1]), nm: parseFloat(m[3]), fosc: parseFloat(m[4]) })).sort((a,b) => a.nm - b.nm);
+                const hM = findL(/Total Enthalpy[^-\d]+(-?\d+\.\d+)\s+Eh/gi);
+                if (hM) { cache.thermo.h = hM[1]; cache.thermo.g = findL(/(?:Final|Total) Gibbs (?:free )?energy[^-\d]+(-?\d+\.\d+)\s+Eh/gi)?.[1]; }
+                
+                const mHeader = fileContent.lastIndexOf("MULLIKEN ATOMIC CHARGES");
+                if (mHeader !== -1) {
+                    mullikenCharges = [...fileContent.substring(mHeader, mHeader + 10000).matchAll(/^\s*(\d+)\s+([A-Za-z]+)\s*:\s*(-?\d+\.\d+)/gm)].map(m => ({ index: parseInt(m[1]), element: m[2], charge: parseFloat(m[3]) }));
+                    const lHeader = fileContent.lastIndexOf("LOEWDIN ATOMIC CHARGES");
+                    if (lHeader !== -1) loewdinCharges = [...fileContent.substring(lHeader, lHeader + 10000).matchAll(/^\s*(\d+)\s+([A-Za-z]+)\s*:\s*(-?\d+\.\d+)/gm)].map(m => ({ index: parseInt(m[1]), element: m[2], charge: parseFloat(m[3]) }));
+                }
+
+                const geomMs = findA(/CARTESIAN COORDINATES \(ANGSTRO?EM\)\s+-+\s+((?:[A-Z][a-z]?\s+-?\d+\.\d+\s+-?\d+\.\d+\s+-?\d+\.\d+\s*\n?)+)/gi);
+                if (geomMs.length) {
+                    allGeometries = geomMs.map(m => { const r = m[1].trim(); return r.split('\n').length + "\n\n" + r; });
+                    init3D(allGeometries[allGeometries.length-1]);
+                    updateGeomStepper();
+                }
+
+                const irPos = fileContent.lastIndexOf("IR SPECTRUM");
+                if (irPos !== -1) cache.ir = [...fileContent.substring(irPos, irPos + 15000).matchAll(/^\s*(\d+):\s+(-?[\d\.]+)\s+[\d\.]+\s+[\d\.]+\s+([\d\.]+)/gm)].map(m => ({ freq: parseFloat(m[2]), intensity: parseFloat(m[3]) }));
+
+                options.energy.disabled = !cache.energies.length;
+                options.optHistory.disabled = cache.energies.length <= 1;
+                options.orbitals.disabled = !cache.orbitals.length;
+                options.tddft.disabled = !cache.tddft.length;
+                options.thermo.disabled = !cache.thermo.h;
+                options.charges.disabled = !mullikenCharges.length;
+                options.geometry.disabled = !allGeometries.length;
+
+                renderOptions(); renderSummaryFromCache(); updateCharts(cache.energies, cache.tddft, cache.ir, cache.orbitals); lucide.createIcons();
+            } catch(e) { console.error("Erro no Parsing:", e); }
+        }
+
+        // --- VISUALIZADOR 3D ---
+
+        function init3D(xyz) {
+            const container = document.getElementById('molContainer');
+            if(!container) return;
+            const canvasTest = document.createElement('canvas');
+            const gl = canvasTest.getContext('webgl') || canvasTest.getContext('experimental-webgl');
+            if (!gl) { container.innerHTML = '<div class="p-8 text-white text-center">WebGL não suportado.</div>'; return; }
+
+            const config = { backgroundColor: '#0f172a', preserveDrawingBuffer: true, antialias: true };
+            if(!viewer) { try { viewer = $3Dmol.createViewer(container, config); } catch(e) { console.error(e); return; } }
+            viewer.clear(); viewer.addModel(xyz, "xyz"); viewer.setClickable(true);
+            const model = viewer.getModel();
+            if(model && typeof model.setClickable === 'function') model.setClickable(true, true, (atom) => handleAtomClick(atom));
+            applyColorMode();
+            setTimeout(() => { viewer.resize(); viewer.zoomTo(); viewer.render(); }, 150);
+        }
+
+        function applyColorMode() {
+            if(!viewer || !viewer.getModel()) return;
+            const mode = document.getElementById('colorMode').value;
+            const showL = document.getElementById('showLabels').checked;
+            const charges = mode === 'mulliken' ? mullikenCharges : (mode === 'loewdin' ? loewdinCharges : []);
+            viewer.removeAllLabels();
+            const ballStickStyle = { stick: { radius: 0.15 }, sphere: { scale: 0.25 } };
+            if (mode !== 'element' && charges.length > 0) {
+                viewer.setStyle({}, { stick: { radius: 0.12, opacity: 0.6, color: '#94a3b8' }, sphere: { radius: 0.45, colorfunc: (atom) => {
+                    const charObj = charges.find(c => c.index === atom.index);
+                    const c = charObj ? charObj.charge : 0;
+                    const r = Math.max(-0.4, Math.min(0.4, c));
+                    if(r < 0) { const val = Math.round(255 * (1 - Math.abs(r)/0.4)); return `rgb(255,${val},${val})`; }
+                    else { const val = Math.round(255 * (1 - r/0.4)); return `rgb(${val},${val},255)`; }
+                }}});
+            } else viewer.setStyle({}, ballStickStyle);
+            if (showL) {
+                viewer.getModel().selectedAtoms({}).forEach(atom => {
+                    viewer.addLabel(`${atom.elem}${atom.index+1}`, { position: atom, font: 'sans-serif', fontSize: 12, fontColor: 'white', backgroundColor: '#334155', backgroundOpacity: 0.8, inFront: true, alignment: 'center' });
+                });
+            }
+            viewer.render();
+        }
+
+        function handleAtomClick(atom) {
+            if (!atom || isPlaying) return;
+            const idx = selectedAtomsIndices.indexOf(atom.index);
+            if (idx !== -1) selectedAtomsIndices.splice(idx, 1);
+            else { if (selectedAtomsIndices.length >= 4) selectedAtomsIndices = []; selectedAtomsIndices.push(atom.index); }
+            refreshVisualSelection();
+        }
+
+        function refreshVisualSelection() {
+            if (!viewer || !viewer.getModel()) return;
+            viewer.removeAllShapes(); viewer.removeAllLabels(); applyColorMode();
+            const atoms = viewer.getModel().selectedAtoms({});
+            const sel = selectedAtomsIndices.map(i => atoms[i]).filter(a => a);
+            const status = document.getElementById('selectionStatus');
+            status.classList.toggle('hidden', sel.length === 0);
+            status.innerText = `Seleção: ${sel.length}/4 átomos`;
+            sel.forEach(a => viewer.addSphere({center: a, radius: 0.45, color: '#f43f5e', opacity: 0.6}));
+            if (sel.length >= 2) {
+                const [a, b] = sel;
+                const d = Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
+                viewer.addLine({start: a, end: b, color: '#f43f5e', linewidth: 2.5});
+                viewer.addLabel(`${d.toFixed(3)} Å`, { position: {x:(a.x+b.x)/2, y:(a.y+b.y)/2, z:(a.z+b.z)/2}, backgroundColor:'white', fontColor:'#f43f5e', fontSize:11, borderThickness:1 });
+            }
+            if (sel.length >= 3) {
+                const [a, b, c] = sel;
+                const v1 = {x:a.x-b.x, y:a.y-b.y, z:a.z-b.z}, v2 = {x:c.x-b.x, y:c.y-b.y, z:c.z-b.z};
+                const angle = Math.acos((v1.x*v2.x+v1.y*v2.y+v1.z*v2.z)/(Math.sqrt(v1.x**2+v1.y**2+v1.z**2)*Math.sqrt(v2.x**2+v2.y**2+v2.z**2))) * (180/Math.PI);
+                viewer.addLabel(`${angle.toFixed(1)}°`, {position: b, backgroundColor:'#4f46e5', fontColor:'white', fontSize:11});
+            }
+            if (sel.length === 4) {
+                const [p1, p2, p3, p4] = sel;
+                const b1 = {x:p2.x-p1.x, y:p2.y-p1.y, z:p2.z-p1.z}, b2 = {x:p3.x-p2.x, y:p3.y-p2.y, z:p3.z-p2.z}, b3 = {x:p4.x-p3.x, y:p4.y-p3.y, z:p4.z-p3.z};
+                const n1 = {x:b1.y*b2.z-b1.z*b2.y, y:b1.z*b2.x-b1.x*b2.z, z:b1.x*b2.y-b1.y*b2.x}, n2 = {x:b2.y*b3.z-b2.z*b3.y, y:b2.z*b3.x-b2.x*b3.z, z:b2.x*b3.y-b2.y*b3.x};
+                const m1 = {x:n1.y*b2.z-n1.z*b2.y, y:n1.z*b2.x-n1.x*b2.z, z:n1.x*b2.y-n1.y*b2.x};
+                const dihedral = Math.atan2((m1.x*n2.x+m1.y*n2.y+m1.z*n2.z)/Math.sqrt(b2.x**2+b2.y**2+b2.z**2), n1.x*n2.x+n1.y*n2.y+n1.z*n2.z) * (180/Math.PI);
+                viewer.addLabel(`D: ${dihedral.toFixed(1)}°`, { position: {x:(p2.x+p3.x)/2, y:(p2.y+p3.y)/2, z:(p2.z+p3.z)/2}, backgroundColor:'#0ea5e9', fontColor:'white', fontSize:11 });
+            }
+            viewer.render();
+        }
+
+        function clearMeasurements() { selectedAtomsIndices = []; if (viewer) { viewer.removeAllShapes(); viewer.removeAllLabels(); applyColorMode(); } document.getElementById('selectionStatus').classList.add('hidden'); }
+
+        // --- GRÁFICOS ---
+
+        function updateCharts(steps, spectrum, ir, orbitals) {
+            if (optChart) optChart.destroy(); if (uvChart) uvChart.destroy(); if (irChart) irChart.destroy(); if (energyChart) energyChart.destroy();
+            const oc = document.getElementById('optChartContainer'), uc = document.getElementById('uvChartContainer'), ic = document.getElementById('irChartContainer'), ec = document.getElementById('energyLevelsContainer');
+            
+            if (steps.length > 1) {
+                oc.classList.remove('hidden');
+                optChart = new Chart(document.getElementById('optChart').getContext('2d'), { type: 'line', data: { labels: steps.map((_, i) => i + 1), datasets: [{ label: 'Energia (Eh)', data: steps, borderColor: '#10b981', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } });
+            } else oc.classList.add('hidden');
+
+            if (spectrum.length > 0) {
+                uc.classList.remove('hidden');
+                const sigma = parseFloat(document.getElementById('sigmaValue').innerText);
+                let x = [], curve = [];
+                for (let w = 200; w <= 700; w++) { x.push(w); let val = 0; spectrum.forEach(p => val += p.fosc * Math.exp(-Math.pow(w-p.nm,2)/(2*Math.pow(sigma,2)))); curve.push(val); }
+                uvChart = new Chart(document.getElementById('uvChart').getContext('2d'), { data: { labels: x, datasets: [ { type: 'line', label: 'Absorbância', data: curve, borderColor: '#6366f1', fill: true, backgroundColor: 'rgba(99,102,241,0.05)', pointRadius: 0, tension: 0.4 }, { type: 'bar', label: 'Transições', data: spectrum.map(p => ({ x: p.nm, y: p.fosc })), backgroundColor: '#fb7185', barThickness: 1.5 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', min: 200, max: 700 }, y: { beginAtZero: true } } } });
+            } else uc.classList.add('hidden');
+
+            if (orbitals.length > 0) {
+                ec.classList.remove('hidden');
+                const sortedOrbitals = [...orbitals].sort((a,b) => a.energy - b.energy);
+                const occ = sortedOrbitals.filter(o => o.occ > 0).slice(-3);
+                const virt = sortedOrbitals.filter(o => o.occ === 0).slice(0,3);
+                const levels = [...occ, ...virt].sort((a,b) => a.energy - b.energy);
+                
+                energyChart = new Chart(document.getElementById('energyChart').getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: levels.map(l => ({
+                            label: l.occ > 0 ? (l.index === occ[occ.length-1].index ? 'HOMO' : `Ocupado ${l.index}`) : (l.index === virt[0].index ? 'LUMO' : `Virtual ${l.index}`),
+                            data: [{ x: 0.5, y: l.energy * EH_TO_EV }, { x: 1.5, y: l.energy * EH_TO_EV }],
+                            showLine: true, borderColor: l.occ > 0 ? '#10b981' : '#f43f5e', borderWidth: 5, pointRadius: 0
+                        }))
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } },
+                        scales: { x: { display: false, min: 0, max: 2 }, y: { title: { display: true, text: 'Energia (eV)', font: { weight: 'bold' } } } }
+                    }
+                });
+            } else ec.classList.add('hidden');
+
+            if (ir && ir.length > 0) {
+                ic.classList.remove('hidden');
+                const sigmaIR = parseFloat(document.getElementById('sigmaIRValue').innerText);
+                let x = [], y = [];
+                for (let f = 400; f <= 4000; f += 5) { x.push(f); let int = 0; ir.forEach(p => int += p.intensity * Math.exp(-Math.pow(f-p.freq,2)/(2*Math.pow(sigmaIR, 2)))); y.push(int); }
+                const max = Math.max(...y) || 1;
+                irChart = new Chart(document.getElementById('irChart').getContext('2d'), { type: 'line', data: { labels: x, datasets: [{ label: 'Transmitância %', data: y.map(v => 100 - (v/max*95)), borderColor: '#f43f5e', pointRadius: 0, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { reverse: true } } } });
+            } else ic.classList.add('hidden');
+        }
+
+        // --- GESTÃO DE OTIMIZAÇÃO ---
+
+        function changeGeomStep(v) {
+            if (!viewer || !allGeometries[v]) return;
+            viewer.clear(); viewer.addModel(allGeometries[v], "xyz");
+            viewer.getModel().setClickable(true, true, (a) => handleAtomClick(a));
+            refreshVisualSelection();
+            document.getElementById('stepDisplay').innerText = `${parseInt(v)+1}/${allGeometries.length}`;
+            document.getElementById('currentStepIdx').innerText = parseInt(v)+1;
+            document.getElementById('currentStepEnergy').innerText = cache.energies[v] ? cache.energies[v].toFixed(8) : "---";
+        }
+
+        function updateGeomStepper() {
+            const s = document.getElementById('geomStepper'), d = document.getElementById('stepEnergyDisplay');
+            if (allGeometries.length > 1) {
+                s.classList.remove('hidden'); d.classList.remove('hidden');
+                const r = document.getElementById('stepRange'); r.max = allGeometries.length - 1; r.value = r.max; changeGeomStep(r.max);
+            } else { s.classList.add('hidden'); d.classList.add('hidden'); }
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) stopAutoPlay();
+            else {
+                if (allGeometries.length <= 1) return;
+                isPlaying = true; document.getElementById('playIcon').setAttribute('data-lucide', 'pause');
+                playbackInterval = setInterval(() => { let r = document.getElementById('stepRange'); let next = (parseInt(r.value) + 1) % allGeometries.length; r.value = next; changeGeomStep(next); }, 350);
+            }
+            lucide.createIcons();
+        }
+
+        function stopAutoPlay() { isPlaying = false; clearInterval(playbackInterval); document.getElementById('playIcon').setAttribute('data-lucide', 'play'); if(typeof lucide !== 'undefined') lucide.createIcons(); }
+
+        // --- APP FLOW ---
+
+        function switchTab(t) {
+            ['text', 'charts', '3d'].forEach(v => {
+                document.getElementById(v === 'text' ? 'textView' : (v === 'charts' ? 'chartsView' : 'view3d')).classList.toggle('hidden', v !== t);
+                const b = document.getElementById('tab-' + v);
+                b.className = (v === t) ? "whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition-all" : "whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all";
+            });
+            if (t === '3d' && viewer) { setTimeout(() => { viewer.resize(); viewer.render(); }, 200); }
+        }
+
+        function handleFilesInternal(file) {
+            if (!file) return;
+            fileName = file.name;
+            stopAutoPlay(); clearMeasurements();
+            document.getElementById('outputArea').textContent = "Processando...";
+            const reader = new FileReader();
+            reader.onload = (e) => { fileContent = e.target.result; parseORCA(); };
+            reader.readAsText(file);
+        }
+
+        function captureChart(c, n) { if(c) { const a = document.createElement('a'); a.href = c.toBase64Image(); a.download = `ORCA_${n}.png`; a.click(); } }
+        function capture3D() { if(viewer) { viewer.render(); const a = document.createElement('a'); a.href = document.querySelector('#molContainer canvas').toDataURL(); a.download = 'ORCA_3D.png'; a.click(); } }
+        function downloadOutput() { if (!fileContent) return; const b = new Blob([document.getElementById('outputArea').textContent], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `ORCA_Relatorio.txt`; a.click(); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const dz = document.getElementById('dropZone'), fi = document.getElementById('fileInput');
+            dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drop-zone--over'); });
+            dz.addEventListener('dragleave', () => dz.classList.remove('drop-zone--over'));
+            dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('drop-zone--over'); if (e.dataTransfer.files.length) handleFilesInternal(e.dataTransfer.files[0]); });
+            fi.addEventListener('change', (e) => { if (fi.files.length) handleFilesInternal(fi.files[0]); });
+            renderOptions();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
