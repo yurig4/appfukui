@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fukui BGR Pro - Visualizador de Reatividade Química</title>
+    
+    <!-- Fontes do Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS para Layout e Utilidades -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons para Iconografia Premium (Offline) -->
+    <script src="lucide.min.js"></script>
+    
+    <!-- Biblioteca jQuery (Requerida pelo 3Dmol.js) (Offline) -->
+    <script src="jquery.min.js"></script>
+    
+    <!-- Biblioteca 3Dmol.js para Visualização Molecular (Offline) -->
+    <script src="3Dmol-min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Efeitos Premium de Glassmorphism e Transições */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-panel-hover:hover {
+            border-color: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .glow-indigo {
+            box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .glow-emerald {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .glow-rose {
+            box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.4);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .canvas-container:hover {
+            box-shadow: 0 0 15px -3px rgba(99, 102, 241, 0.15);
+        }
+
+        /* Animações Customizadas */
+        @keyframes border-pulse {
+            0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
+            50% { border-color: rgba(99, 102, 241, 0.7); }
+        }
+        .animate-border-pulse {
+            animation: border-pulse 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-[#030712] text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
+    
+    <!-- Efeitos de Fundo Orgânicos (Glows) -->
+    <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-emerald-900/5 rounded-full blur-[140px] pointer-events-none -z-10"></div>
+    <div class="absolute top-1/3 right-10 w-[400px] h-[400px] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+
+    <!-- Banner de Carregamento de Recursos -->
+    <div id="loader-banner" class="bg-gradient-to-r from-indigo-700 to-violet-700 text-white text-xs font-semibold text-center py-2 transition-all sticky top-0 z-50 shadow-lg flex items-center justify-center gap-2">
+        <span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+        <span>A carregar dependências 3Dmol/jQuery de alta performance... Por favor, aguarde.</span>
+    </div>
+
+    <!-- Cabeçalho Principal (Navbar) -->
+    <header class="border-b border-slate-900 bg-slate-950/40 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-gradient-to-tr from-indigo-600 to-violet-600 text-white rounded-xl shadow-lg shadow-indigo-900/20 border border-indigo-400/20 relative group overflow-hidden">
+                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <i data-lucide="atom" class="w-6 h-6 animate-pulse relative z-10"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent flex items-center gap-2">
+                        Fukui BGR Pro
+                        <span class="text-[10px] tracking-normal font-medium bg-indigo-900/60 border border-indigo-700/50 text-indigo-300 px-2 py-0.5 rounded-full uppercase">v2.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">Extração de Cargas de Hirshfeld e Mapeamento de Reatividade BGR [0 a 1]</p>
+                </div>
+            </div>
+            
+            <!-- Ações Rápidas -->
+            <div class="flex items-center gap-3">
+                <button onclick="carregarExemplo()" class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-950/30 border border-indigo-400/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
+                    <i data-lucide="beaker" class="w-4 h-4"></i>
+                    🧪 Carregar Molécula BDT (Exemplo)
+                </button>
+                <button onclick="toggleModal('modal-ajuda', true)" class="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-800 transition-colors" title="Informações e Equações">
+                    <i data-lucide="help-circle" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sistema de Alertas/Toasts -->
+    <div id="toast-container" class="fixed top-24 right-6 z-50 space-y-2.5 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- Layout Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        <!-- COLUNA ESQUERDA: CONTROLES (4 colunas) -->
+        <aside class="lg:col-span-4 space-y-6 flex flex-col">
+            
+            <!-- 1. Carregamento de Arquivos ORCA -->
+            <section class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-950 text-indigo-400 text-xs font-bold border border-indigo-900/60">1</span>
+                    <h2 class="font-bold text-slate-200 text-sm tracking-wide">Ficheiros de Output ORCA (.out / .log)</h2>
+                </div>
+                
+                <div class="space-y-3.5">
+                    <!-- Ficheiro Neutro -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                            <span>Molécula Neutra (N)</span>
+                            <span id="badge-neutral" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
+                        </label>
+                        <div class="relative border border-dashed border-slate-800 hover:border-indigo-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
+                            <input type="file" id="file-neutral" onchange="manipularCarregamento('neutral')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div class="flex items-center gap-3 text-xs text-slate-400">
+                                <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-indigo-400 transition-colors">
+                                    <i data-lucide="upload" class="w-4 h-4"></i>
+                                </div>
+                                <span id="label-neutral" class="truncate font-medium">Carregar ficheiro neutro...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ficheiro Catião -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                            <span>Catião (N - 1)</span>
+                            <span id="badge-cation" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
+                        </label>
+                        <div class="relative border border-dashed border-slate-800 hover:border-emerald-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
+                            <input type="file" id="file-cation" onchange="manipularCarregamento('cation')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div class="flex items-center gap-3 text-xs text-slate-400">
+                                <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-emerald-400 transition-colors">
+                                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                </div>
+                                <span id="label-cation" class="truncate font-medium">Carregar ficheiro do Catião...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ficheiro Anião -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                            <span>Anião (N + 1)</span>
+                            <span id="badge-anion" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
+                        </label>
+                        <div class="relative border border-dashed border-slate-800 hover:border-rose-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
+                            <input type="file" id="file-anion" onchange="manipularCarregamento('anion')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div class="flex items-center gap-3 text-xs text-slate-400">
+                                <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-rose-400 transition-colors">
+                                    <i data-lucide="minus-circle" class="w-4 h-4"></i>
+                                </div>
+                                <span id="label-anion" class="truncate font-medium">Carregar ficheiro do Anião...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="calcularFukui()" class="w-full mt-2 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 hover:from-indigo-500 hover:via-purple-500 hover:to-violet-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-950/50 border border-indigo-400/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4"></i>
+                    Calcular Reatividade Fukui
+                </button>
+            </section>
+
+            <!-- 2. Parâmetros de Visualização e Filtro -->
+            <section class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-950 text-indigo-400 text-xs font-bold border border-indigo-900/60">2</span>
+                    <h2 class="font-bold text-slate-200 text-sm tracking-wide">Configurações de Mapeamento</h2>
+                </div>
+
+                <!-- 2.2 Método de Normalização -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Fórmula de Normalização [0-1]</span>
+                        <span class="text-[10px] text-indigo-400 font-semibold cursor-pointer underline flex items-center gap-0.5" onclick="toggleModal('modal-ajuda-norm', true)">
+                            <i data-lucide="info" class="w-3 h-3"></i> O que é?
+                        </span>
+                    </label>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button id="btn-norm-zero" onclick="setNormalizationType('zero_to_max')" class="px-3 py-2.5 text-xs text-left font-semibold rounded-lg border border-indigo-500/30 bg-indigo-900/20 text-indigo-300 transition-all flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full border border-indigo-500/80 bg-indigo-500/20 flex items-center justify-center shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            </span>
+                            <div>
+                                <span class="block font-bold">Padrão [0 a Max] (Recomendado)</span>
+                                <span class="text-[10px] text-slate-400">Mapeia de 0 a Max. Negativos ficam em Azul (0).</span>
+                            </div>
+                        </button>
+                        <button id="btn-norm-relative" onclick="setNormalizationType('relative')" class="px-3 py-2.5 text-xs text-left font-semibold rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-750 transition-all flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-700 bg-transparent flex items-center justify-center shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                            </span>
+                            <div>
+                                <span class="block font-bold">Relativo [Min a Max]</span>
+                                <span class="text-[10px] text-slate-500">Normalização clássica do menor valor (Azul) ao maior (Vermelho).</span>
+                            </div>
+                        </button>
+                        <button id="btn-norm-absolute" onclick="setNormalizationType('absolute')" class="px-3 py-2.5 text-xs text-left font-semibold rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-750 transition-all flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-700 bg-transparent flex items-center justify-center shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                            </span>
+                            <div>
+                                <span class="block font-bold">Direto Absoluto [0.0 a 1.0]</span>
+                                <span class="text-[10px] text-slate-500">Valores de Fukui são diretamente mapeados no intervalo real [0, 1].</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2.3 Opções de Estilo & Palete -->
+                <div class="grid grid-cols-2 gap-3.5">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Palete de Cores</label>
+                        <select id="select-palette" onchange="atualizarEstiloVisualizacao()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                            <option value="bgr" selected>🔵 BGR (Azul - Verde - Vermelho)</option>
+                            <option value="bwr">⚪ BWR (Azul - Branco - Vermelho)</option>
+                            <option value="viridis">🟣 Viridis (Uniforme Quântico)</option>
+                            <option value="rainbow">🌈 Rainbow (Arco-Íris / Jet)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Estilo 3D</label>
+                        <select id="select-style" onchange="atualizarEstiloVisualizacao()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                            <option value="ball_stick" selected>⚾ Esferas e Bastões</option>
+                            <option value="sphere">🥎 Esferas (CPK Espacial)</option>
+                            <option value="stick">🥢 Apenas Bastões (Varetas)</option>
+                            <option value="line">✏️ Linhas Finas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 2.4 Switches Rápidos -->
+                <div class="flex flex-col gap-2 pt-2 border-t border-slate-900">
+                    <div class="flex items-center gap-2.5 py-1">
+                        <input type="checkbox" id="check-labels" onchange="atualizarEstiloVisualizacao()" checked class="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer">
+                        <label for="check-labels" class="text-xs font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5">
+                            <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-450"></i> Mostrar Etiquetas dos Átomos
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2.5 py-1">
+                        <input type="checkbox" id="check-hydrogens" onchange="atualizarEstiloVisualizacao()" checked class="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer">
+                        <label for="check-hydrogens" class="text-xs font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5">
+                            <i data-lucide="droplet" class="w-3.5 h-3.5 text-slate-450"></i> Mostrar Átomos de Hidrogénio
+                        </label>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- COLUNA DIREITA: VISUALIZADORES E TABELA (8 colunas) -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Janela dos Visualizadores 3D Sincronizados -->
+            <div class="glass-panel rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-900 pb-3.5 gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse glow-indigo"></div>
+                        <h2 class="font-extrabold text-slate-200 text-base tracking-tight">Visualizações 3D Sincronizadas</h2>
+                    </div>
+                    
+                    <!-- Informações da Molécula Carregada -->
+                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                        <span class="px-2.5 py-1 bg-slate-950 rounded-lg border border-slate-900 text-xs font-mono font-semibold text-indigo-400 flex items-center gap-1.5" id="label-formula">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Sem Dados
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Grade 2x2 de Canvas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- 1. Molécula Neutra CPK (Referência) -->
+                    <div class="bg-slate-950/40 border border-slate-900 rounded-2xl p-3 flex flex-col relative group hover:border-slate-800 transition-all">
+                        <div class="flex justify-between items-center mb-2.5 text-[11px] font-bold text-slate-450 uppercase tracking-wider">
+                            <span class="flex items-center gap-1"><i data-lucide="database" class="w-3.5 h-3.5 text-slate-500"></i> Neutra (CPK Referência)</span>
+                            <button onclick="exportImage(0, 'bgr_neutra_referencia.png')" class="p-1 px-2 bg-slate-900 hover:bg-indigo-950 hover:text-indigo-400 text-slate-450 rounded-lg border border-slate-800 hover:border-indigo-900/50 transition-all flex items-center gap-1" title="Exportar imagem PNG">
+                                <i data-lucide="download" class="w-3 h-3"></i> <span class="text-[9px] font-mono">PNG</span>
+                            </button>
+                        </div>
+                        <div class="canvas-container w-full h-[230px] rounded-xl overflow-hidden shadow-inner border border-slate-950">
+                            <div id="canvas-neutral" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Ataque Nucleofílico f+ -->
+                    <div class="bg-slate-950/40 border border-slate-900 rounded-2xl p-3 flex flex-col relative group hover:border-indigo-950 transition-all">
+                        <div class="flex justify-between items-center mb-2.5 text-[11px] font-bold text-indigo-400 uppercase tracking-wider">
+                            <span class="flex items-center gap-1"><i data-lucide="shield-alert" class="w-3.5 h-3.5 text-indigo-400 animate-bounce"></i> Nucleofílico (f⁺) <span id="range-plus" class="text-slate-500 text-[10px] ml-1 font-mono"></span></span>
+                            <button onclick="exportImage(1, 'bgr_fukui_nucleofilico_plus.png')" class="p-1 px-2 bg-slate-900 hover:bg-indigo-950 hover:text-indigo-400 text-slate-450 rounded-lg border border-slate-800 hover:border-indigo-900/50 transition-all flex items-center gap-1" title="Exportar imagem PNG">
+                                <i data-lucide="download" class="w-3 h-3"></i> <span class="text-[9px] font-mono">PNG</span>
+                            </button>
+                        </div>
+                        <div class="canvas-container w-full h-[230px] rounded-xl overflow-hidden shadow-inner border border-slate-950">
+                            <div id="canvas-f-plus" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Ataque Eletrofílico f- -->
+                    <div class="bg-slate-950/40 border border-slate-900 rounded-2xl p-3 flex flex-col relative group hover:border-emerald-950 transition-all">
+                        <div class="flex justify-between items-center mb-2.5 text-[11px] font-bold text-emerald-450 uppercase tracking-wider">
+                            <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> Eletrofílico (f⁻) <span id="range-minus" class="text-slate-500 text-[10px] ml-1 font-mono"></span></span>
+                            <button onclick="exportImage(2, 'bgr_fukui_eletrofilico_minus.png')" class="p-1 px-2 bg-slate-900 hover:bg-indigo-950 hover:text-indigo-400 text-slate-450 rounded-lg border border-slate-800 hover:border-indigo-900/50 transition-all flex items-center gap-1" title="Exportar imagem PNG">
+                                <i data-lucide="download" class="w-3 h-3"></i> <span class="text-[9px] font-mono">PNG</span>
+                            </button>
+                        </div>
+                        <div class="canvas-container w-full h-[230px] rounded-xl overflow-hidden shadow-inner border border-slate-950">
+                            <div id="canvas-f-minus" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Ataque Radicalar f0 -->
+                    <div class="bg-slate-950/40 border border-slate-900 rounded-2xl p-3 flex flex-col relative group hover:border-pink-950 transition-all">
+                        <div class="flex justify-between items-center mb-2.5 text-[11px] font-bold text-pink-400 uppercase tracking-wider">
+                            <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3.5 h-3.5 text-pink-400"></i> Radicalar (f⁰) <span id="range-zero" class="text-slate-500 text-[10px] ml-1 font-mono"></span></span>
+                            <button onclick="exportImage(3, 'bgr_fukui_radicalar_zero.png')" class="p-1 px-2 bg-slate-900 hover:bg-indigo-950 hover:text-indigo-400 text-slate-450 rounded-lg border border-slate-800 hover:border-indigo-900/50 transition-all flex items-center gap-1" title="Exportar imagem PNG">
+                                <i data-lucide="download" class="w-3 h-3"></i> <span class="text-[9px] font-mono">PNG</span>
+                            </button>
+                        </div>
+                        <div class="canvas-container w-full h-[230px] rounded-xl overflow-hidden shadow-inner border border-slate-950">
+                            <div id="canvas-f-zero" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Detalhes Focados do Átomo Selecionado (Interação Bidirecional) -->
+                <div id="overlay-atomo" class="bg-slate-950/80 border border-slate-800/80 p-4 rounded-2xl hidden transition-all relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none"></div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 id="overlay-titulo" class="font-extrabold text-sm text-indigo-400 flex items-center gap-2">
+                            <i data-lucide="crosshair" class="w-4 h-4 text-indigo-400"></i> Investigador: Átomo
+                        </h4>
+                        <button onclick="fecharOverlay()" class="text-slate-550 hover:text-slate-300 p-1 hover:bg-slate-900 rounded-lg transition-colors">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                        <div class="p-2 bg-slate-900/40 rounded-xl border border-slate-900">
+                            <span class="text-slate-500 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Posição XYZ (Å)</span>
+                            <span id="overlay-xyz" class="font-mono text-slate-300 font-medium">0, 0, 0</span>
+                        </div>
+                        <div class="p-2 bg-slate-900/40 rounded-xl border border-slate-900">
+                            <span class="text-slate-500 font-semibold block uppercase tracking-wider text-[9px] mb-0.5" id="lbl-cargatipo-neutral">Carga Neutro (qN)</span>
+                            <span id="overlay-neutral-charge" class="font-mono text-slate-300 font-medium">0.0000</span>
+                        </div>
+                        <div class="p-2 bg-indigo-950/20 rounded-xl border border-indigo-950">
+                            <span class="text-indigo-400 font-bold block uppercase tracking-wider text-[9px] mb-0.5">Fukui Nucleofílico (f⁺)</span>
+                            <span id="overlay-fplus-val" class="font-mono font-bold text-indigo-300">0.0000</span>
+                        </div>
+                        <div class="p-2 bg-emerald-950/20 rounded-xl border border-emerald-950">
+                            <span class="text-emerald-400 font-bold block uppercase tracking-wider text-[9px] mb-0.5">Fukui Eletrofílico (f⁻)</span>
+                            <span id="overlay-fminus-val" class="font-mono font-bold text-emerald-350">0.0000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Legenda do Gradiente de Reatividade -->
+                <div class="flex flex-col gap-1.5 px-1 bg-slate-950/20 p-2.5 rounded-xl border border-slate-900/50">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Menos Reativo (0.0)</span>
+                        <span class="text-slate-500 font-semibold" id="legenda-metodo">BGR Relativo de Fukui</span>
+                        <span class="flex items-center gap-1">Mais Reativo (1.0) <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span></span>
+                    </div>
+                    <div id="gradient-bar" class="w-full h-3 rounded-full border border-slate-950 shadow-inner" style="background: linear-gradient(to right, rgb(0, 0, 255), rgb(0, 255, 0), rgb(255, 0, 0));"></div>
+                </div>
+            </div>
+
+            <!-- Tabela de Dados e Exportação Completa -->
+            <div class="glass-panel rounded-3xl p-5 shadow-2xl flex-1 flex flex-col gap-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900 pb-4">
+                    <div class="space-y-1">
+                        <h3 class="font-bold text-slate-200 flex items-center gap-2 text-sm tracking-wide">
+                            <i data-lucide="table-2" class="w-4 h-4 text-slate-400"></i>
+                            Tabela de Resultados por Átomo
+                            <span id="label-active-charges" class="text-[9px] bg-indigo-950/80 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded-md font-mono font-bold uppercase">HIRSHFELD</span>
+                        </h3>
+                        <p class="text-xs text-slate-500">Clique nas linhas para selecionar o átomo nos visualizadores 3D. Clique nos cabeçalhos para ordenar.</p>
+                    </div>
+
+                    <!-- Input de Busca -->
+                    <div class="relative shrink-0 w-full md:w-48">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                        <input type="text" id="input-search" oninput="filtrarTabela()" placeholder="Filtrar elemento (ex: C, S)..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <!-- Exportações -->
+                <div class="flex flex-wrap items-center gap-2 p-3 bg-slate-950/40 rounded-2xl border border-slate-900 text-xs">
+                    <span class="font-bold text-slate-400 uppercase tracking-wider text-[9px] mr-2 flex items-center gap-1"><i data-lucide="share-2" class="w-3.5 h-3.5"></i> Exportação:</span>
+                    <button onclick="exportarCSV()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-indigo-450"></i> CSV
+                    </button>
+                    <button onclick="exportarModeloSolicitado('pdb')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exporta B-Factor PDB">
+                        <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-450"></i> PDB (B-Factor)
+                    </button>
+                    <button onclick="exportarModeloSolicitado('xyz')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="binary" class="w-3.5 h-3.5 text-amber-500"></i> XYZ
+                    </button>
+                    <button onclick="exportarChimeraXdefattr()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exportar para ChimeraX">
+                        <i data-lucide="palette" class="w-3.5 h-3.5 text-rose-500"></i> ChimeraX (.defattr)
+                    </button>
+                    <button onclick="exportarFukuiImagens()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exportar modelos F+, F- e F0 (.png transparente)">
+                        <i data-lucide="image" class="w-3.5 h-3.5 text-pink-500"></i> Imagens Transparentes
+                    </button>
+                </div>
+
+                <!-- Tabela de Dados -->
+                <div class="overflow-x-auto rounded-2xl border border-slate-900 bg-slate-950/60 max-h-[360px] relative">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 bg-slate-950/95 backdrop-blur-md border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider select-none z-10">
+                            <tr>
+                                <th class="p-3.5 cursor-pointer hover:bg-slate-900 text-slate-300" onclick="ordenarTabela('index')">
+                                    <div class="flex items-center gap-1.5">Átomo <span id="sort-icon-index">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center cursor-pointer hover:bg-slate-900" onclick="ordenarTabela('qNeutral')">
+                                    <div class="flex items-center justify-center gap-1.5">q (Neutro) <span id="sort-icon-qNeutral">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center cursor-pointer hover:bg-slate-900" onclick="ordenarTabela('qCation')">
+                                    <div class="flex items-center justify-center gap-1.5">q (Catião) <span id="sort-icon-qCation">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center cursor-pointer hover:bg-slate-900" onclick="ordenarTabela('qAnion')">
+                                    <div class="flex items-center justify-center gap-1.5">q (Anião) <span id="sort-icon-qAnion">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center text-indigo-400 font-bold bg-indigo-950/10 cursor-pointer hover:bg-indigo-950/20 border-x border-slate-900" onclick="ordenarTabela('fPlus')">
+                                    <div class="flex items-center justify-center gap-1.5">f⁺ <span id="sort-icon-fPlus">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center text-emerald-455 font-bold bg-emerald-950/10 cursor-pointer hover:bg-emerald-950/20" onclick="ordenarTabela('fMinus')">
+                                    <div class="flex items-center justify-center gap-1.5">f⁻ <span id="sort-icon-fMinus">↕</span></div>
+                                </th>
+                                <th class="p-3.5 font-mono text-center text-pink-400 font-bold bg-pink-950/10 cursor-pointer hover:bg-pink-950/20 border-l border-slate-900" onclick="ordenarTabela('fZero')">
+                                    <div class="flex items-center justify-center gap-1.5">f⁰ <span id="sort-icon-fZero">↕</span></div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-results-body" class="divide-y divide-slate-900/60">
+                            <tr>
+                                <td colspan="7" class="p-8 text-center text-slate-500 italic">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        <i data-lucide="table-2" class="w-8 h-8 opacity-30"></i>
+                                        <span>Submeta os 3 ficheiros ORCA para extrair as cargas de Hirshfeld e gerar os dados de reatividade.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Informações Básicas & Equações -->
+    <div id="modal-ajuda" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden transition-all">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+                <h3 class="text-base font-extrabold text-slate-100 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                    Equações dos Índices de Fukui Condensados
+                </h3>
+                <button onclick="toggleModal('modal-ajuda', false)" class="text-slate-550 hover:text-slate-300 p-1.5 bg-slate-950 rounded-lg border border-slate-800">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                <p>Os índices de Fukui condensados aproximam a reatividade em sítios específicos (átomos) da molécula sob ataques nucleofílicos, eletrofílicos e radicalares usando cargas parciais obtidas por diferenças finitas:</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                    <div class="p-4 bg-slate-950/85 rounded-2xl border border-slate-850">
+                        <span class="block text-[10px] font-bold text-indigo-455 uppercase tracking-widest">Ataque Nucleofílico (f⁺)</span>
+                        <div class="my-3 text-center font-mono font-bold text-slate-100 text-sm">f⁺ = q(N) - q(N+1)</div>
+                        <span class="text-[10px] text-slate-400 block mt-1 leading-normal">Identifica sítios eletrofílicos (suscetíveis a receber nucleófilos / doadores de e⁻).</span>
+                    </div>
+                    <div class="p-4 bg-slate-950/85 rounded-2xl border border-slate-850">
+                        <span class="block text-[10px] font-bold text-emerald-450 uppercase tracking-widest">Ataque Eletrofílico (f⁻)</span>
+                        <div class="my-3 text-center font-mono font-bold text-slate-100 text-sm">f⁻ = q(N-1) - q(N)</div>
+                        <span class="text-[10px] text-slate-400 block mt-1 leading-normal">Identifica sítios nucleofílicos (suscetíveis a doar para eletrófilos / recetores de e⁻).</span>
+                    </div>
+                    <div class="p-4 bg-slate-950/85 rounded-2xl border border-slate-850">
+                        <span class="block text-[10px] font-bold text-pink-450 uppercase tracking-widest">Ataque Radicalar (f⁰)</span>
+                        <div class="my-3 text-center font-mono font-bold text-slate-100 text-sm">f⁰ = (f⁺ + f⁻) / 2</div>
+                        <span class="text-[10px] text-slate-400 block mt-1 leading-normal">Mede a suscetibilidade para sofrer reações de ataque por radicais livres.</span>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-950/40 border border-indigo-900/50 p-4 rounded-2xl text-xs text-indigo-300 space-y-1.5">
+                    <p class="font-bold flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i> Convenção de Sinais das Cargas:</p>
+                    <p>O ORCA imprime cargas com os sinais convencionais (negativos para excesso de e⁻, positivos para deficiência de e⁻). Para manter o formalismo atómico clássico em que um aumento da densidade eletrónica (e.g. redução para o anião) diminui o índice correspondente, as equações inversoras acima operam essa álgebra corretamente. Cargas de <strong>Hirshfeld</strong> são amplamente recomendadas na literatura para estes cálculos pois são menos sensíveis ao conjunto de bases do que Mulliken.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal explicativo sobre Normalizações -->
+    <div id="modal-ajuda-norm" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden transition-all">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+                <h3 class="text-base font-extrabold text-slate-100 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i>
+                    Métodos de Normalização e a Escala BGR
+                </h3>
+                <button onclick="toggleModal('modal-ajuda-norm', false)" class="text-slate-555 hover:text-slate-300 p-1.5 bg-slate-950 rounded-lg border border-slate-800">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                <p>Na escala de cores <strong>BGR (Blue-Green-Red)</strong>, os átomos são pintados com um gradiente contínuo de reatividade:</p>
+                <ul class="list-disc pl-5 space-y-1 text-xs">
+                    <li><strong class="text-blue-400">Azul (0.0):</strong> Menor reatividade atómica ou inativa.</li>
+                    <li><strong class="text-emerald-450">Verde (0.5):</strong> Reatividade intermediária.</li>
+                    <li><strong class="text-rose-455">Vermelho (1.0):</strong> Máxima reatividade atómica da molécula.</li>
+                </ul>
+
+                <p class="font-bold text-slate-200">Escolha o melhor método de mapeamento para sua análise:</p>
+                
+                <div class="space-y-3">
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-900">
+                        <span class="block font-bold text-indigo-400 text-xs">1. Padrão [0 a Max]</span>
+                        <p class="text-[11px] text-slate-400 mt-1">Garante que a reatividade 0 represente exatamente a inatividade (cor Azul). Valores negativos são fixados em Azul, e a escala sobe até ao maior valor. Ideal para comparações sem distorções causadas por termos negativos não físicos.</p>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-900">
+                        <span class="block font-bold text-indigo-400 text-xs">2. Relativo [Min a Max]</span>
+                        <p class="text-[11px] text-slate-400 mt-1">Divide a escala inteiramente entre o menor valor encontrado (Azul) e o maior valor (Vermelho). Útil para visualizar pequenas diferenças relativas dentro de moléculas compactas.</p>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-900">
+                        <span class="block font-bold text-indigo-400 text-xs">3. Direto Absoluto [0.0 a 1.0]</span>
+                        <p class="text-[11px] text-slate-400 mt-1">Usa o valor de Fukui diretamente como a percentagem de cor de 0.0 a 1.0. Bom se você tem valores estritamente limitados a esta escala teórica.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="border-t border-slate-950 bg-slate-950/80 py-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Fukui BGR Pro - Desenvolvido para Pesquisa Académica de Alta Precisão.</span>
+            <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i> Processamento 100% Client-side. Nenhum dado sai do seu computador.</span>
+        </div>
+    </footer>
+
+    <!-- Logística Principal da Aplicação (JS) -->
+    <script>
+        // Inicializa Lucide Icons
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
+        // Estado Global da Aplicação
+        let baseMolData = {
+            loaded: { neutral: false, cation: false, anion: false },
+            files: { neutral: null, cation: null, anion: null },
+            atoms: [],          
+            chargeType: 'hirshfeld', // Agora operamos exclusivamente com Hirshfeld
+            baseFileName: 'mol', // Nome capturado do arquivo
+            normType: 'zero_to_max', // 'relative', 'zero_to_max', 'absolute'
+            results: [],
+            sortedColumn: 'index',
+            sortAscending: true,
+            filterText: ''
+        };
+
+        // Visualizadores 3Dmol.js
+        let viewers = [null, null, null, null]; // 0: Neutro, 1: f+, 2: f-, 3: f0
+        let highlightedIndex = null;
+        let librariesReady = false;
+
+        // Tentativa de Inicializar Dependências CDN
+        let initRetries = 0;
+        function tryInitialize() {
+            if (typeof window.jQuery !== 'undefined' && typeof window.$3Dmol !== 'undefined') {
+                librariesReady = true;
+                const banner = document.getElementById('loader-banner');
+                if (banner) banner.classList.add('hidden');
+                inicializarSincronizacao();
+                notify("Módulos de visualização 3Dmol.js carregados com sucesso!", "success");
+            } else if (initRetries < 30) {
+                initRetries++;
+                setTimeout(tryInitialize, 150);
+            } else {
+                const banner = document.getElementById('loader-banner');
+                if (banner) {
+                    banner.className = "bg-rose-600 text-white text-xs font-bold text-center py-2 sticky top-0 z-50 shadow-md";
+                    banner.innerText = "❌ Erro ao carregar as bibliotecas 3Dmol/jQuery. Por favor, verifique a sua ligação à internet.";
+                }
+                notify("Erro de Rede: Não foi possível carregar as bibliotecas 3Dmol/jQuery.", "error");
+            }
+        }
+        window.addEventListener('DOMContentLoaded', tryInitialize);
+
+        // Toast de Notificações
+        function notify(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-2xl border text-xs shadow-xl transition-all duration-350 transform translate-y-3 opacity-0 pointer-events-auto glass-panel`;
+            
+            let iconStr = "info";
+            if (type === 'success') {
+                toast.classList.add('bg-emerald-955/80', 'border-emerald-500/20', 'text-emerald-300', 'glow-emerald');
+                iconStr = "check-circle2";
+            } else if (type === 'error') {
+                toast.classList.add('bg-rose-955/80', 'border-rose-500/20', 'text-rose-300', 'glow-rose');
+                iconStr = "alert-circle";
+            } else {
+                toast.classList.add('bg-amber-955/80', 'border-amber-550/20', 'text-amber-300');
+                iconStr = "alert-triangle";
+            }
+
+            toast.innerHTML = `
+                <i data-lucide="${iconStr}" class="w-4 h-4 shrink-0"></i>
+                <span class="font-bold tracking-wide">${message}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => { toast.classList.remove('translate-y-3', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-3', 'opacity-0');
+                setTimeout(() => { toast.remove(); }, 350);
+            }, 4500);
+        }
+
+        // Abrir/Fechar Modais
+        function toggleModal(id, show) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        // Processa Carregamento do Input
+        async function manipularCarregamento(type) {
+            const input = document.getElementById(`file-${type}`);
+            const badge = document.getElementById(`badge-${type}`);
+            const label = document.getElementById(`label-${type}`);
+
+            if (input && input.files && input.files[0]) {
+                const file = input.files[0];
+                const text = await file.text();
+                
+                // Salvar o nome base ao carregar o arquivo neutro
+                if (type === 'neutral') {
+                    baseMolData.baseFileName = file.name.replace(/\.[^/.]+$/, "");
+                }
+                
+                try {
+                    const parsed = parseOrcaOutput(text);
+                    if (parsed.coordinates.length === 0) {
+                        throw new Error("Não foram encontradas coordenadas cartesianas no ficheiro.");
+                    }
+                    if (parsed.hirshfeldCharges.length === 0) {
+                        throw new Error("Não foram encontrados dados de cargas atómicas de Hirshfeld no ficheiro.");
+                    }
+
+                    baseMolData.files[type] = parsed;
+                    baseMolData.loaded[type] = true;
+
+                    if (badge) {
+                        badge.innerText = `OK (${parsed.coordinates.length} Át.)`;
+                        badge.className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-450 border border-emerald-900/60 rounded font-mono font-bold uppercase";
+                    }
+                    if (label) {
+                        label.innerText = file.name;
+                        label.className = "truncate text-slate-100 font-bold";
+                    }
+                    
+                    notify(`Molécula ${type.toUpperCase()} carregada com sucesso. Cargas processadas.`, 'success');
+                } catch (err) {
+                    notify(`Erro ao ler o ficheiro ${type}: ${err.message}`, 'error');
+                    resetFileInput(type);
+                }
+            }
+        }
+
+        function resetFileInput(type) {
+            const input = document.getElementById(`file-${type}`);
+            const badge = document.getElementById(`badge-${type}`);
+            const label = document.getElementById(`label-${type}`);
+            if (input) input.value = "";
+            if (badge) {
+                badge.innerText = "Vazio";
+                badge.className = "text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900";
+            }
+            if (label) {
+                label.innerText = `Carregar ficheiro...`;
+                label.className = "truncate text-slate-500 font-medium";
+            }
+            baseMolData.files[type] = null;
+            baseMolData.loaded[type] = false;
+        }
+
+        // Parser Avançado de Ficheiros de Saída do ORCA (.out / .log)
+        function parseOrcaOutput(text) {
+            const lines = text.split(/\r?\n/);
+            let coordinates = [];
+            let mullikenCharges = [];
+            let loewdinCharges = [];
+            let hirshfeldCharges = [];
+
+            // 1. Coordenadas Cartesianas (Busca pela última ocorrência para pegar a geometria final otimizada)
+            let coordIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const upperLine = lines[i].toUpperCase();
+                if (upperLine.includes("CARTESIAN COORDINATES") && 
+                    (upperLine.includes("ANGSTROM") || upperLine.includes("ANGSTROEM") || upperLine.includes("ANGSTROEMS") || upperLine.includes("ANGSTROMS"))) {
+                    coordIndex = i;
+                    break;
+                }
+            }
+
+            if (coordIndex !== -1) {
+                let startLine = coordIndex + 1;
+                while (startLine < lines.length && (lines[startLine].includes("---") || lines[startLine].trim() === "" || lines[startLine].toLowerCase().includes("atom"))) {
+                    startLine++;
+                }
+
+                for (let i = startLine; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line === "" || line.includes("---") || line.toUpperCase().includes("CARTESIAN")) {
+                        break;
+                    }
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 4) {
+                        let elem = parts[0];
+                        let x = parseFloat(parts[1]);
+                        let y = parseFloat(parts[2]);
+                        let z = parseFloat(parts[3]);
+
+                        // Trata índice opcional no início
+                        if (!isNaN(parts[0]) && isNaN(parts[1])) {
+                            elem = parts[1];
+                            x = parseFloat(parts[2]);
+                            y = parseFloat(parts[3]);
+                            z = parseFloat(parts[4]);
+                        }
+
+                        if (elem && !isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                            coordinates.push({ element: elem, x, y, z });
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // 2. Cargas de Hirshfeld (Última ocorrência)
+            let hirshfeldIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const upperLine = lines[i].toUpperCase();
+                if (upperLine.includes("HIRSHFELD ANALYSIS")) {
+                    hirshfeldIndex = i;
+                    break;
+                }
+            }
+            if (hirshfeldIndex !== -1) {
+                let startLine = hirshfeldIndex + 1;
+                while (startLine < lines.length && (lines[startLine].includes("---") || lines[startLine].trim() === "" || lines[startLine].toLowerCase().includes("integrated") || lines[startLine].toLowerCase().includes("density") || lines[startLine].toUpperCase().includes("ATOM") || lines[startLine].toUpperCase().includes("CHARGE"))) {
+                    startLine++;
+                }
+                for (let i = startLine; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line === "" || line.includes("---") || line.toUpperCase().includes("TOTAL") || line.toUpperCase().includes("TOTAL RUN TIME") || line.toUpperCase().includes("TIMINGS") || line.toUpperCase().includes("DFT DISPERSION")) {
+                        break;
+                    }
+                    const match = line.match(/^(\d+)\s+([A-Za-z]+)\s*[:]?\s*([-+]?\d+\.\d+)/);
+                    if (match) {
+                        hirshfeldCharges[parseInt(match[1])] = parseFloat(match[3]);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            return { coordinates, hirshfeldCharges };
+        }
+
+        // Executa Cálculo Geral de Fukui e Inicializa os 4 Visualizadores
+        function calcularFukui() {
+            if (!librariesReady) {
+                notify("Por favor, aguarde o carregamento completo do visualizador molecular.", "warning");
+                return;
+            }
+
+            if (!baseMolData.loaded.neutral || !baseMolData.loaded.cation || !baseMolData.loaded.anion) {
+                notify("Validação Falhada: Certifique-se de carregar todos os 3 ficheiros requeridos.", "error");
+                return;
+            }
+
+            const nData = baseMolData.files.neutral;
+            const cData = baseMolData.files.cation;
+            const aData = baseMolData.files.anion;
+
+            const totalAtoms = nData.coordinates.length;
+            if (cData.coordinates.length !== totalAtoms || aData.coordinates.length !== totalAtoms) {
+                notify(`Erro Estrutural: O número de átomos nos ficheiros diverge (Neutro: ${totalAtoms}, Catião: ${cData.coordinates.length}, Anião: ${aData.coordinates.length}). Por favor, revise os seus cálculos do ORCA.`, "error");
+                return;
+            }
+
+            baseMolData.atoms = nData.coordinates;
+
+            processarCalculosFukui();
+
+            // Renderizar Modelos 3D
+            inicializarMolecula3D();
+            atualizarTabelaResultados();
+            calcularFormulaEmpirica();
+
+            notify("Computação e coloração atómica de Fukui concluídas com sucesso!", "success");
+        }
+
+        // Processa os Cálculos Matemáticos de Fukui
+        function processarCalculosFukui() {
+            const nData = baseMolData.files.neutral;
+            const cData = baseMolData.files.cation;
+            const aData = baseMolData.files.anion;
+
+            baseMolData.results = [];
+
+            for (let i = 0; i < baseMolData.atoms.length; i++) {
+                const atom = baseMolData.atoms[i];
+                
+                let qN = nData.hirshfeldCharges[i] || 0;
+                let qC = cData.hirshfeldCharges[i] || 0;
+                let qA = aData.hirshfeldCharges[i] || 0;
+
+                // Fórmulas de Fukui Condensado corretas algebraicamente
+                const fPlus = qN - qA;
+                const fMinus = qC - qN;
+                const fZero = (fPlus + fMinus) / 2;
+
+                baseMolData.results.push({
+                    index: i,
+                    element: atom.element,
+                    x: atom.x,
+                    y: atom.y,
+                    z: atom.z,
+                    qNeutral: qN,
+                    qCation: qC,
+                    qAnion: qA,
+                    fPlus: fPlus,
+                    fMinus: fMinus,
+                    fZero: fZero
+                });
+            }
+        }
+
+        function calcularFormulaEmpirica() {
+            const counts = {};
+            baseMolData.atoms.forEach(a => { counts[a.element] = (counts[a.element] || 0) + 1; });
+            
+            let formula = "";
+            const elements = Object.keys(counts).sort((a, b) => {
+                if (a === 'C') return -1; if (b === 'C') return 1;
+                if (a === 'H') return -1; if (b === 'H') return 1;
+                return a.localeCompare(b);
+            });
+            elements.forEach(el => { formula += `${el}${counts[el] > 1 ? counts[el] : ''}`; });
+            const label = document.getElementById('label-formula');
+            if (label) label.innerHTML = `<i data-lucide="file-text" class="w-3.5 h-3.5 inline"></i> ${formula} (${baseMolData.atoms.length} átomos)`;
+            lucide.createIcons();
+        }
+
+
+
+        // Mudar Método de Normalização
+        function setNormalizationType(type) {
+            baseMolData.normType = type;
+            const normTypes = ['relative', 'zero_to_max', 'absolute'];
+            
+            normTypes.forEach(t => {
+                const btn = document.getElementById(`btn-norm-${t === 'zero_to_max' ? 'zero' : t === 'relative' ? 'relative' : 'absolute'}`);
+                if (btn) {
+                    if (t === type) {
+                        btn.className = "px-3 py-2.5 text-xs text-left font-semibold rounded-lg border border-indigo-500/30 bg-indigo-900/20 text-indigo-300 transition-all flex items-center gap-2";
+                        btn.querySelector('span.rounded-full').className = "w-3.5 h-3.5 rounded-full border border-indigo-500/80 bg-indigo-500/20 flex items-center justify-center shrink-0";
+                        btn.querySelector('span.rounded-full span').className = "w-1.5 h-1.5 rounded-full bg-indigo-400";
+                    } else {
+                        btn.className = "px-3 py-2.5 text-xs text-left font-semibold rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-750 transition-all flex items-center gap-2";
+                        btn.querySelector('span.rounded-full').className = "w-3.5 h-3.5 rounded-full border border-slate-700 bg-transparent flex items-center justify-center shrink-0";
+                        btn.querySelector('span.rounded-full span').className = "w-1.5 h-1.5 rounded-full bg-transparent";
+                    }
+                }
+            });
+
+            if (baseMolData.results.length > 0) {
+                atualizarEstiloVisualizacao();
+            }
+        }
+
+        // Gera Hex Color com Base no Valor e Esquema Escolhido
+        function getColorForValue(val, min, max, paletteType, normType) {
+            let t = 0.5;
+            if (normType === 'absolute') {
+                t = val;
+            } else if (normType === 'zero_to_max') {
+                t = max > 0 ? val / max : 0;
+            } else {
+                if (max !== min) t = (val - min) / (max - min);
+            }
+            // Clampar para faixa segura de [0, 1]
+            t = Math.max(0, Math.min(1, t));
+
+            let r, g, b;
+            if (paletteType === 'bgr') {
+                // Escala Solicitada: Blue (0.0) -> Green (0.5) -> Red (1.0)
+                if (t < 0.5) {
+                    let p = t * 2; // 0 a 1
+                    r = 0;
+                    g = Math.round(255 * p);
+                    b = Math.round(255 * (1 - p));
+                } else {
+                    let p = (t - 0.5) * 2; // 0 a 1
+                    r = Math.round(255 * p);
+                    g = Math.round(255 * (1 - p));
+                    b = 0;
+                }
+            } else if (paletteType === 'bwr') {
+                // Blue -> White -> Red
+                if (t < 0.5) {
+                    let p = t * 2;
+                    r = Math.round(255 * p);
+                    g = Math.round(255 * p);
+                    b = 255;
+                } else {
+                    let p = (t - 0.5) * 2;
+                    r = 255;
+                    g = Math.round(255 * (1 - p));
+                    b = Math.round(255 * (1 - p));
+                }
+            } else if (paletteType === 'viridis') {
+                // Viridis Color Scale
+                r = Math.round((0.267 - 0.482 * t + 4.908 * t * t - 3.73 * t * t * t) * 255);
+                g = Math.round((0.004 + 1.41 * t + 1.343 * t * t - 1.83 * t * t * t) * 255);
+                b = Math.round((0.329 + 1.95 * t - 4.10 * t * t + 2.144 * t * t * t) * 255);
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+            } else {
+                // Rainbow (Jet) Color Scale
+                if (t < 0.25) {
+                    r = 0; g = Math.round(t * 4 * 255); b = 255;
+                } else if (t < 0.5) {
+                    r = 0; g = 255; b = Math.round((1 - (t - 0.25) * 4) * 255);
+                } else if (t < 0.75) {
+                    r = Math.round((t - 0.5) * 4 * 255); g = 255; b = 0;
+                } else {
+                    r = 255; g = Math.round((1 - (t - 0.75) * 4) * 255); b = 0;
+                }
+            }
+            // CONVERSÃO PARA HEXADECIMAL
+            return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        }
+
+        // Inicializa Visualizadores 3D com dados XYZ
+        function inicializarMolecula3D() {
+            if (baseMolData.results.length === 0) return;
+
+            const ids = ['canvas-neutral', 'canvas-f-plus', 'canvas-f-minus', 'canvas-f-zero'];
+            
+            let xyzData = `${baseMolData.atoms.length}\nGerado pelo Fukui BGR Pro\n`;
+            baseMolData.atoms.forEach(atom => {
+                xyzData += `${atom.element} ${atom.x} ${atom.y} ${atom.z}\n`;
+            });
+
+            ids.forEach((id, index) => {
+                const container = document.getElementById(id);
+                if (!container) return;
+                container.innerHTML = ""; // Limpar instâncias antigas
+
+                // Criar instância 3Dmol
+                const v = window.$3Dmol.createViewer(window.jQuery(container), {
+                    defaultcolors: window.$3Dmol.rasmolElementColors
+                });
+                v.setBackgroundColor(0x0b0f19); // Alinhado com o background do card
+                viewers[index] = v;
+
+                let model = v.addModel(xyzData, "xyz");
+                v.setStyle({}, { stick: { radius: 0.15 } });
+            });
+
+            atualizarEstiloVisualizacao();
+
+            // Zoom automático sincronizado inicial com leve delay
+            setTimeout(() => {
+                viewers.forEach(v => {
+                    if (v) { v.zoomTo(); v.render(); }
+                });
+                if (viewers[0]) {
+                    const defaultView = viewers[0].getView();
+                    viewers.forEach(v => {
+                        if (v) { v.setView(defaultView); v.render(); }
+                    });
+                }
+            }, 100);
+        }
+
+        // Aplica o Estilo e Cores a Todas as Sub-Vistas
+        function atualizarEstiloVisualizacao() {
+            if (!viewers[0] || baseMolData.results.length === 0) return;
+
+            const style = document.getElementById('select-style').value;
+            const palette = document.getElementById('select-palette').value;
+            const normType = baseMolData.normType;
+            const showLabels = document.getElementById('check-labels').checked;
+            const showHydrogens = document.getElementById('check-hydrogens').checked;
+
+            // Filtros de limites
+            const fPlusVals = baseMolData.results.map(r => r.fPlus);
+            const fMinusVals = baseMolData.results.map(r => r.fMinus);
+            const fZeroVals = baseMolData.results.map(r => r.fZero);
+
+            const bounds = {
+                plus: { min: Math.min(...fPlusVals), max: Math.max(...fPlusVals) },
+                minus: { min: Math.min(...fMinusVals), max: Math.max(...fMinusVals) },
+                zero: { min: Math.min(...fZeroVals), max: Math.max(...fZeroVals) }
+            };
+
+            // Atualiza limites textuais na interface
+            document.getElementById('range-plus').innerText = `[${bounds.plus.min.toFixed(3)} a ${bounds.plus.max.toFixed(3)}]`;
+            document.getElementById('range-minus').innerText = `[${bounds.minus.min.toFixed(3)} a ${bounds.minus.max.toFixed(3)}]`;
+            document.getElementById('range-zero').innerText = `[${bounds.zero.min.toFixed(3)} a ${bounds.zero.max.toFixed(3)}]`;
+
+            // Atualiza texto da barra de gradiente
+            const legendText = document.getElementById('legenda-metodo');
+            let normWord = "Relativo";
+            if (normType === 'zero_to_max') normWord = "Padrão [0 a Max]";
+            if (normType === 'absolute') normWord = "Absoluto [0 a 1]";
+            legendText.innerText = `${palette.toUpperCase()} ${normWord} de Fukui`;
+
+            const gradBar = document.getElementById('gradient-bar');
+            if (gradBar) {
+                if (palette === 'bgr') {
+                    gradBar.style.background = 'linear-gradient(to right, rgb(0, 0, 255), rgb(0, 255, 0), rgb(255, 0, 0))';
+                } else if (palette === 'bwr') {
+                    gradBar.style.background = 'linear-gradient(to right, rgb(0, 0, 255), rgb(255, 255, 255), rgb(255, 0, 0))';
+                } else if (palette === 'viridis') {
+                    gradBar.style.background = 'linear-gradient(to right, #440154, #31688e, #35b779, #fde725)';
+                } else {
+                    gradBar.style.background = 'linear-gradient(to right, rgb(0, 0, 255), rgb(0, 255, 255), rgb(0, 255, 0), rgb(255, 255, 0), rgb(255, 0, 0))';
+                }
+            }
+
+            viewers.forEach((v, index) => {
+                if (!v) return;
+                v.removeAllLabels();
+                v.setStyle({}, {}); // Limpar estilos em toda a cena
+                
+                let model = v.getModel();
+                if (!model) return;
+
+                baseMolData.results.forEach((res, i) => {
+                    const isSelected = i === highlightedIndex;
+                    const isHydrogen = res.element === 'H';
+
+                    // Oculta hidrogénios se configurado
+                    if (isHydrogen && !showHydrogens) {
+                        return;
+                    }
+
+                    let atomStyle = {};
+
+                    if (index === 0) {
+                        // Janela 0: Neutro de Referência em Cores CPK Clássicas
+                        if (style === 'sphere') {
+                            atomStyle = { sphere: { radius: isSelected ? 1.3 : 1.0 } };
+                        } else if (style === 'stick') {
+                            atomStyle = { stick: { radius: isSelected ? 0.35 : 0.22 } };
+                        } else if (style === 'line') {
+                            atomStyle = { line: { radius: 0.05 } };
+                        } else {
+                            atomStyle = {
+                                sphere: { radius: isSelected ? 0.65 : 0.46 },
+                                stick: { color: '#334155', radius: 0.12 }
+                            };
+                        }
+                    } else {
+                        // Janelas de Fukui (1, 2, 3): Mapeadas na escala BGR com normalização selecionada
+                        let val = 0;
+                        let b = { min: 0, max: 1 };
+                        
+                        if (index === 1) { val = res.fPlus; b = bounds.plus; }
+                        else if (index === 2) { val = res.fMinus; b = bounds.minus; }
+                        else if (index === 3) { val = res.fZero; b = bounds.zero; }
+
+                        const atomColor = getColorForValue(val, b.min, b.max, palette, normType);
+
+                        if (style === 'sphere') {
+                            atomStyle = { sphere: { color: atomColor, radius: isSelected ? 1.3 : 1.0 } };
+                        } else if (style === 'stick') {
+                            atomStyle = { stick: { color: atomColor, radius: isSelected ? 0.35 : 0.22 } };
+                        } else if (style === 'line') {
+                            atomStyle = { line: { color: atomColor, radius: 0.05 } };
+                        } else {
+                            atomStyle = {
+                                sphere: { color: atomColor, radius: isSelected ? 0.65 : 0.46 },
+                                stick: { color: atomColor, radius: 0.12 }
+                            };
+                        }
+                    }
+
+                    // Usamos addStyle com index, pois XYZ não tem 'serial'
+                    v.addStyle({index: res.index}, atomStyle);
+
+                    // Adicionar Etiquetas Atomicas Personalizadas
+                    if (showLabels) {
+                        v.addLabel(`${res.element}${res.index + 1}`, {
+                            position: {x: res.x, y: res.y, z: res.z},
+                            backgroundColor: 'rgba(3, 7, 18, 0.85)',
+                            backgroundOpacity: 0.85,
+                            borderColor: isSelected ? '#6366f1' : '#1e293b',
+                            borderWidth: isSelected ? 1.5 : 1,
+                            fontSize: isSelected ? 11 : 9,
+                            fontColor: isSelected ? '#818cf8' : '#94a3b8',
+                            alignment: 'center',
+                            showBackground: true
+                        });
+                    }
+                });
+
+                // Registrar cliques no visualizador
+                model.setClickable(true, true, function(atom) {
+                    selecionarAtomo(atom.index);
+                });
+
+                v.render();
+            });
+        }
+
+        // Sincroniza Rotação e Zoom entre as 4 Câmaras 3Dmol
+        function inicializarSincronizacao() {
+            const ids = ['canvas-neutral', 'canvas-f-plus', 'canvas-f-minus', 'canvas-f-zero'];
+            
+            ids.forEach((id, index) => {
+                const container = document.getElementById(id);
+                if (!container) return;
+
+                const propagarMatriz = () => {
+                    if (!viewers[index]) return;
+                    const viewMatrix = viewers[index].getView();
+                    viewers.forEach((v, i) => {
+                        if (v && i !== index) {
+                            v.setView(viewMatrix);
+                            v.render();
+                        }
+                    });
+                };
+
+                // Eventos de Mouse
+                container.addEventListener('mousemove', (e) => {
+                    if (e.buttons === 1 || e.buttons === 2) {
+                        propagarMatriz();
+                    }
+                });
+
+                container.addEventListener('wheel', () => {
+                    setTimeout(propagarMatriz, 10);
+                });
+
+                // Eventos Touch para Ecrãs Táteis
+                container.addEventListener('touchmove', () => {
+                    propagarMatriz();
+                });
+            });
+        }
+
+        // Investigar e Destacar um Átomo nos Painéis e Tabelas
+        function selecionarAtomo(index) {
+            highlightedIndex = index;
+            atualizarEstiloVisualizacao();
+
+            const atomData = baseMolData.results[index];
+            const overlay = document.getElementById('overlay-atomo');
+            if (overlay) overlay.classList.remove('hidden');
+            
+            // Preenche dados do átomo no card focado
+            document.getElementById('overlay-titulo').innerHTML = `<i data-lucide="crosshair" class="w-4 h-4 text-indigo-400"></i> Investigador: Átomo ${atomData.element}${atomData.index + 1}`;
+            document.getElementById('overlay-xyz').innerText = `${atomData.x.toFixed(3)}, ${atomData.y.toFixed(3)}, ${atomData.z.toFixed(3)}`;
+            document.getElementById('overlay-neutral-charge').innerText = atomData.qNeutral.toFixed(4);
+            document.getElementById('overlay-fplus-val').innerText = atomData.fPlus.toFixed(4);
+            document.getElementById('overlay-fminus-val').innerText = atomData.fMinus.toFixed(4);
+            lucide.createIcons();
+
+            // Realçar visualmente a linha correspondente na tabela
+            const rows = document.querySelectorAll('#table-results-body tr');
+            rows.forEach(r => {
+                r.className = "hover:bg-slate-900/60 cursor-pointer transition-colors";
+            });
+
+            const targetRow = document.getElementById(`row-atom-${index}`);
+            if (targetRow) {
+                targetRow.className = "bg-indigo-950/40 border-l-4 border-indigo-500 hover:bg-indigo-900/30 cursor-pointer font-semibold transition-all";
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Fecha a overlay de atomo
+        function fecharOverlay() {
+            const overlay = document.getElementById('overlay-atomo');
+            if (overlay) overlay.classList.add('hidden');
+            highlightedIndex = null;
+            atualizarEstiloVisualizacao();
+            
+            const rows = document.querySelectorAll('#table-results-body tr');
+            rows.forEach(r => {
+                r.className = "hover:bg-slate-900/60 cursor-pointer transition-colors";
+            });
+        }
+
+        // Reconstrói a Tabela de Resultados Conforme Estado
+        function atualizarTabelaResultados() {
+            const body = document.getElementById('table-results-body');
+            if (!body) return;
+            body.innerHTML = "";
+
+            if (baseMolData.results.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-slate-550 italic">
+                            Sem resultados calculados.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Filtragem
+            let filteredResults = baseMolData.results.filter(r => {
+                const fullSymbol = `${r.element}${r.index + 1}`.toLowerCase();
+                return fullSymbol.includes(baseMolData.filterText.toLowerCase()) || 
+                       r.element.toLowerCase().includes(baseMolData.filterText.toLowerCase());
+            });
+
+            // Ordenação
+            const col = baseMolData.sortedColumn;
+            const asc = baseMolData.sortAscending;
+            filteredResults.sort((a, b) => {
+                let vA = a[col];
+                let vB = b[col];
+                if (col === 'index') {
+                    vA = a.index; vB = b.index;
+                }
+                return asc ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
+            });
+
+            filteredResults.forEach((res) => {
+                const tr = document.createElement('tr');
+                const isSelected = res.index === highlightedIndex;
+                tr.id = `row-atom-${res.index}`;
+                tr.className = isSelected 
+                    ? "bg-indigo-950/40 border-l-4 border-indigo-500 hover:bg-indigo-900/30 cursor-pointer font-semibold transition-all"
+                    : "hover:bg-slate-900/60 cursor-pointer transition-colors";
+                
+                tr.onclick = () => selecionarAtomo(res.index);
+
+                tr.innerHTML = `
+                    <td class="p-3.5 font-bold text-slate-200">
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-indigo-400' : 'bg-slate-700'}"></span>
+                            ${res.element}${res.index + 1}
+                        </div>
+                    </td>
+                    <td class="p-3.5 text-center font-mono text-slate-400">${res.qNeutral.toFixed(4)}</td>
+                    <td class="p-3.5 text-center font-mono text-slate-400">${res.qCation.toFixed(4)}</td>
+                    <td class="p-3.5 text-center font-mono text-slate-400">${res.qAnion.toFixed(4)}</td>
+                    <td class="p-3.5 text-center font-mono text-indigo-400 font-bold bg-indigo-950/15 border-x border-slate-900/80">${res.fPlus.toFixed(4)}</td>
+                    <td class="p-3.5 text-center font-mono text-emerald-400 font-bold bg-emerald-950/15">${res.fMinus.toFixed(4)}</td>
+                    <td class="p-3.5 text-center font-mono text-pink-400 font-bold bg-pink-950/15 border-l border-slate-900/80">${res.fZero.toFixed(4)}</td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        // Ordenar colunas ao clicar no header
+        function ordenarTabela(column) {
+            if (baseMolData.sortedColumn === column) {
+                baseMolData.sortAscending = !baseMolData.sortAscending;
+            } else {
+                baseMolData.sortedColumn = column;
+                baseMolData.sortAscending = true;
+            }
+
+            // Atualiza indicadores visuais de ordenação na tabela
+            const columns = ['index', 'qNeutral', 'qCation', 'qAnion', 'fPlus', 'fMinus', 'fZero'];
+            columns.forEach(c => {
+                const el = document.getElementById(`sort-icon-${c}`);
+                if (el) {
+                    if (c === column) {
+                        el.innerText = baseMolData.sortAscending ? "▲" : "▼";
+                        el.className = "text-indigo-400 font-extrabold";
+                    } else {
+                        el.innerText = "↕";
+                        el.className = "text-slate-650 opacity-40";
+                    }
+                }
+            });
+
+            atualizarTabelaResultados();
+        }
+
+        // Filtragem por Elemento em Tempo Real
+        function filtrarTabela() {
+            const input = document.getElementById('input-search');
+            baseMolData.filterText = input.value;
+            atualizarTabelaResultados();
+        }
+
+        // Exportar Imagem PNG Individual de Alta Resolução de Qualquer Visualizador
+        function exportImage(viewerIndex, filename) {
+            const v = viewers[viewerIndex];
+            if (!v) {
+                notify("Nenhuma molécula renderizada para exportação gráfica.", "error");
+                return;
+            }
+            v.render();
+            const uri = v.pngURI();
+            const link = document.createElement("a");
+            link.href = uri;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            notify(`Imagem PNG exportada com sucesso: ${filename}`, "success");
+        }
+        // Exportar Imagens Transparentes F+, F- e F0
+        function exportarFukuiImagens() {
+            if (baseMolData.results.length === 0) {
+                notify("Não existem resultados computados para exportação.", "error");
+                return;
+            }
+
+            const viewerMap = [
+                { id: 1, suffix: 'F+' },
+                { id: 2, suffix: 'F-' },
+                { id: 3, suffix: 'F0' }
+            ];
+
+            viewerMap.forEach(item => {
+                const v = viewers[item.id];
+                if (!v) return;
+
+                // Fundo transparente (alpha = 0.0)
+                v.setBackgroundColor(0x000000, 0.0);
+                v.render();
+
+                const uri = v.pngURI();
+
+                const link = document.createElement("a");
+                link.href = uri;
+                link.download = `${baseMolData.baseFileName}_${item.suffix}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Restaurar fundo do tema
+                v.setBackgroundColor(0x030712, 1.0); 
+                v.render();
+            });
+
+            notify("Imagens F+, F- e F0 exportadas com fundo transparente!", "success");
+        }
+
+        // Exportar Relatório CSV de Fukui
+        function exportarCSV() {
+            if (baseMolData.results.length === 0) {
+                notify("Não existem resultados computados para exportação.", "error");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += `Atomo,Elemento,X,Y,Z,Carga_Neutro_${baseMolData.chargeType},Carga_Cation_${baseMolData.chargeType},Carga_Anion_${baseMolData.chargeType},Fukui_Plus,Fukui_Minus,Fukui_Zero\n`;
+
+            baseMolData.results.forEach(r => {
+                const row = [
+                    `${r.element}${r.index + 1}`, r.element, r.x, r.y, r.z,
+                    r.qNeutral, r.qCation, r.qAnion,
+                    r.fPlus, r.fMinus, r.fZero
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `fukui_bgr_pro_relatorio_${baseMolData.chargeType}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            notify("Relatório de dados CSV transferido com sucesso.", "success");
+        }
+
+        // Exportar Modelos Moleculares (XYZ ou PDB B-Factor)
+        function exportarModeloSolicitado(format) {
+            if (baseMolData.results.length === 0) {
+                notify("Nenhuma molécula carregada para exportação estrutural.", "error");
+                return;
+            }
+
+            // Pergunta qual índice o utilizador deseja mapear no ficheiro
+            const activeIndex = prompt("Qual índice de Fukui deseja exportar no modelo?\nEscreva:\nplus  -> para f⁺\nminus -> para f⁻\nzero  -> para f⁰\ncharge -> para a Carga Neutra", "plus");
+            if (!activeIndex) return;
+            
+            let prop = 'fPlus';
+            let label = 'fukui_plus';
+            if (activeIndex.toLowerCase().includes('min') || activeIndex.toLowerCase() === 'minus') {
+                prop = 'fMinus'; label = 'fukui_minus';
+            } else if (activeIndex.toLowerCase().includes('zer') || activeIndex.toLowerCase() === 'zero') {
+                prop = 'fZero'; label = 'fukui_zero';
+            } else if (activeIndex.toLowerCase().includes('charg') || activeIndex.toLowerCase() === 'charge') {
+                prop = 'qNeutral'; label = 'carga_neutro';
+            }
+
+            let fileContent = "";
+            let ext = "";
+            if (format === 'xyz') {
+                ext = "xyz";
+                fileContent += `${baseMolData.results.length}\n`;
+                fileContent += `Modelo exportado pelo Fukui BGR Pro - Mapeamento: ${label}\n`;
+                baseMolData.results.forEach((r) => {
+                    fileContent += `${r.element.padEnd(3)} ${r.x.toFixed(6).padStart(12)} ${r.y.toFixed(6).padStart(12)} ${r.z.toFixed(6).padStart(12)} ${r[prop].toFixed(6).padStart(10)}\n`;
+                });
+            } else if (format === 'pdb') {
+                ext = "pdb";
+                baseMolData.results.forEach((r, i) => {
+                    const serial = (i + 1).toString().padStart(5);
+                    const name = r.element.padEnd(4).substring(0, 4);
+                    const resName = "MOL".padEnd(3);
+                    const chain = "A";
+                    const resSeq = "1".padStart(4);
+                    const x = r.x.toFixed(3).padStart(8);
+                    const y = r.y.toFixed(3).padStart(8);
+                    const z = r.z.toFixed(3).padStart(8);
+                    const occupancy = "1.00".padStart(6);
+                    
+                    // Colocar o Fukui no campo B-factor (tempFactor)
+                    const bFactor = r[prop].toFixed(4).padStart(6);
+                    const elem = r.element.padStart(2);
+                    
+                    fileContent += `ATOM  ${serial}  ${name} ${resName} ${chain}${resSeq}    ${x}${y}${z}${occupancy}${bFactor}          ${elem}  \n`;
+                });
+                fileContent += "END\n";
+            }
+
+            const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `bgr_export_${label}.${ext}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            notify(`Estrutura molecular ${format.toUpperCase()} (${label}) transferida.`, "success");
+        }
+
+        // Exportar ficheiro de atributos ChimeraX (.defattr)
+        function exportarChimeraXdefattr() {
+            if (baseMolData.results.length === 0) {
+                notify("Nenhum resultado para gerar ficheiro do ChimeraX.", "error");
+                return;
+            }
+
+            const activeIndex = prompt("Qual índice de Fukui deseja exportar para o ChimeraX?\nEscreva:\nplus  -> para f⁺\nminus -> para f⁻\nzero  -> para f⁰", "plus");
+            if (!activeIndex) return;
+
+            let prop = 'fPlus';
+            let label = 'fukui_plus';
+            if (activeIndex.toLowerCase().includes('min') || activeIndex.toLowerCase() === 'minus') {
+                prop = 'fMinus'; label = 'fukui_minus';
+            } else if (activeIndex.toLowerCase().includes('zer') || activeIndex.toLowerCase() === 'zero') {
+                prop = 'fZero'; label = 'fukui_zero';
+            }
+
+            let defattr = "# Attribute file for Chimera/ChimeraX\n";
+            defattr += `attribute: ${label}\n`;
+            defattr += "match mode: 1-to-1\n";
+            defattr += "recipient: atoms\n";
+
+            baseMolData.results.forEach((r, i) => {
+                // Modelo padrão de resíduo: :1@C1 ou :1@S9 etc
+                defattr += `\t:1@${r.element}${i + 1}\t${r[prop].toFixed(6)}\n`;
+            });
+
+            const blob = new Blob([defattr], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `chimerax_${label}.defattr`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            notify(`Ficheiro ChimeraX .defattr (${label}) transferido com sucesso.`, "success");
+        }
+
+        // Demonstração Integrada de dados da molécula BDT (Benzoditiofeno)
+        function carregarExemplo() {
+            if (!librariesReady) {
+                notify("Módulos 3Dmol/jQuery ainda não carregados totalmente. Aguarde.", "warning");
+                return;
+            }
+
+            const outNeutral = `
+            ---------------------------------
+            CARTESIAN COORDINATES (ANGSTROEMS)
+            ---------------------------------
+              C      2.125319   -0.021405    0.002248
+              C      1.501206   -1.303848   -0.003376
+              C      0.121120   -1.458774   -0.005986
+              C     -0.671602   -0.304204   -0.002913
+              C      1.332597    1.133169    0.005263
+              C     -0.047489    0.978239    0.002672
+              C     -2.108463   -0.199416   -0.004554
+              C     -2.548347    1.083819   -0.000587
+              C      3.562178   -0.126192    0.004065
+              S      2.704548   -2.587348   -0.006199
+              H     -0.338445   -2.442421   -0.010231
+              H      1.792161    2.116814    0.009567
+              H     -2.769223   -1.059054   -0.008612
+              H     -3.573327    1.429726   -0.000834
+              S     -1.250832    2.261739    0.005696
+              C      4.002064   -1.409426   -0.000040
+              H      5.027043   -1.755333    0.000207
+              H      4.222941    0.733445    0.008216
+
+            ------------------
+            HIRSHFELD ANALYSIS
+            ------------------
+            0 C   -0.012032    0.000000
+            1 C   -0.012567    0.000000
+            2 C   -0.042383    0.000000
+            3 C   -0.012032    0.000000
+            4 C   -0.042383    0.000000
+            5 C   -0.012567    0.000000
+            6 C   -0.055423    0.000000
+            7 C   -0.047363    0.000000
+            8 C   -0.055423    0.000000
+            9 S    0.025101    0.000000
+            10 H   0.044187    0.000000
+            11 H   0.044187    0.000000
+            12 H   0.047145    0.000000
+            13 H   0.053351    0.000000
+            14 S   0.025101    0.000000
+            15 C  -0.047363    0.000000
+            16 H   0.053351    0.000000
+            17 H   0.047145    0.000000
+            `;
+
+            const outCation = `
+            ---------------------------------
+            CARTESIAN COORDINATES (ANGSTROEMS)
+            ---------------------------------
+              C      2.125319   -0.021405    0.002248
+              C      1.501206   -1.303848   -0.003376
+              C      0.121120   -1.458774   -0.005986
+              C     -0.671602   -0.304204   -0.002913
+              C      1.332597    1.133169    0.005263
+              C     -0.047489    0.978239    0.002672
+              C     -2.108463   -0.199416   -0.004554
+              C     -2.548347    1.083819   -0.000587
+              C      3.562178   -0.126192    0.004065
+              S      2.704548   -2.587348   -0.006199
+              H     -0.338445   -2.442421   -0.010231
+              H      1.792161    2.116814    0.009567
+              H     -2.769223   -1.059054   -0.008612
+              H     -3.573327    1.429726   -0.000834
+              S     -1.250832    2.261739    0.005696
+              C      4.002064   -1.409426   -0.000040
+              H      5.027043   -1.755333    0.000207
+              H      4.222941    0.733445    0.008216
+
+            ------------------
+            HIRSHFELD ANALYSIS
+            ------------------
+            0 C    0.010257    0.012535
+            1 C    0.000878   -0.011731
+            2 C    0.032921    0.158085
+            3 C    0.010256    0.012535
+            4 C    0.032921    0.158086
+            5 C    0.000878   -0.011731
+            6 C    0.006757    0.097320
+            7 C    0.014939    0.057968
+            8 C    0.006756    0.097320
+            9 S    0.190667    0.171734
+            10 H   0.076733    0.007409
+            11 H   0.076733    0.007409
+            12 H   0.079228    0.004648
+            13 H   0.087639    0.002033
+            14 S   0.190667    0.171734
+            15 C   0.014939    0.057968
+            16 H   0.087639    0.002033
+            17 H   0.079228    0.004648
+            `;
+
+            const outAnion = `
+            ---------------------------------
+            CARTESIAN COORDINATES (ANGSTROEMS)
+            ---------------------------------
+              C      2.125319   -0.021405    0.002248
+              C      1.501206   -1.303848   -0.003376
+              C      0.121120   -1.458774   -0.005986
+              C     -0.671602   -0.304204   -0.002913
+              C      1.332597    1.133169    0.005263
+              C     -0.047489    0.978239    0.002672
+              C     -2.108463   -0.199416   -0.004554
+              C     -2.548347    1.083819   -0.000587
+              C      3.562178   -0.126192    0.004065
+              S      2.704548   -2.587348   -0.006199
+              H     -0.338445   -2.442421   -0.010231
+              H      1.792161    2.116814    0.009567
+              H     -2.769223   -1.059054   -0.008612
+              H     -3.573327    1.429726   -0.000834
+              S     -1.250832    2.261739    0.005696
+              C      4.002064   -1.409426   -0.000040
+              H      5.027043   -1.755333    0.000207
+              H      4.222941    0.733445    0.008216
+
+            ------------------
+            HIRSHFELD ANALYSIS
+            ------------------
+            0 C   -0.057838    0.089225
+            1 C   -0.029439   -0.009100
+            2 C   -0.110995    0.124578
+            3 C   -0.057838    0.089224
+            4 C   -0.110996    0.124579
+            5 C   -0.029439   -0.009100
+            6 C   -0.105927    0.029439
+            7 C   -0.141195    0.201309
+            8 C   -0.105926    0.029439
+            9 S   -0.086553    0.040651
+            10 H   0.008932    0.008034
+            11 H   0.008933    0.008035
+            12 H   0.015298    0.001321
+            13 H   0.007733    0.014544
+            14 S   -0.086553    0.040651
+            15 C  -0.141195    0.201309
+            16 H   0.007733    0.014544
+            17 H   0.015298    0.001321
+            `;
+
+            baseMolData.files.neutral = parseOrcaOutput(outNeutral);
+            baseMolData.loaded.neutral = true;
+            document.getElementById('label-neutral').innerText = "bdt_neutro_exemplo.out";
+            document.getElementById('label-neutral').className = "truncate text-slate-100 font-bold";
+            document.getElementById('badge-neutral').innerText = "Exemplo";
+            document.getElementById('badge-neutral').className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-455 border border-emerald-900/60 rounded font-mono font-bold uppercase";
+
+            baseMolData.files.cation = parseOrcaOutput(outCation);
+            baseMolData.loaded.cation = true;
+            document.getElementById('label-cation').innerText = "bdt_catiao_exemplo.out";
+            document.getElementById('label-cation').className = "truncate text-slate-100 font-bold";
+            document.getElementById('badge-cation').innerText = "Exemplo";
+            document.getElementById('badge-cation').className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-455 border border-emerald-900/60 rounded font-mono font-bold uppercase";
+
+            baseMolData.files.anion = parseOrcaOutput(outAnion);
+            baseMolData.loaded.anion = true;
+            document.getElementById('label-anion').innerText = "bdt_aniao_exemplo.out";
+            document.getElementById('label-anion').className = "truncate text-slate-100 font-bold";
+            document.getElementById('badge-anion').innerText = "Exemplo";
+            document.getElementById('badge-anion').className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-455 border border-emerald-900/60 rounded font-mono font-bold uppercase";
+
+            calcularFukui();
+        }
+    </script>
+</body>
+</html>
