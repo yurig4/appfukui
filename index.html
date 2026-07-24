@@ -122,7 +122,6 @@
                 <div>
                     <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent flex items-center gap-2">
                         Fukui BGR Pro
-                        <span class="text-[10px] tracking-normal font-medium bg-indigo-900/60 border border-indigo-700/50 text-indigo-300 px-2 py-0.5 rounded-full uppercase">v2.0</span>
                     </h1>
                     <p class="text-xs text-slate-400 font-medium">Extração de Cargas de Hirshfeld e Mapeamento de Reatividade BGR [0 a 1]</p>
                 </div>
@@ -154,7 +153,7 @@
             <section class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
                 <div class="flex items-center gap-2 border-b border-slate-900 pb-3">
                     <span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-950 text-indigo-400 text-xs font-bold border border-indigo-900/60">1</span>
-                    <h2 class="font-bold text-slate-200 text-sm tracking-wide">Ficheiros de Output ORCA (.out / .log)</h2>
+                    <h2 class="font-bold text-slate-200 text-sm tracking-wide">Ficheiros de Output ORCA (.out)</h2>
                 </div>
                 
                 <div class="space-y-3.5">
@@ -165,12 +164,12 @@
                             <span id="badge-neutral" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
                         </label>
                         <div class="relative border border-dashed border-slate-800 hover:border-indigo-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
-                            <input type="file" id="file-neutral" onchange="manipularCarregamento('neutral')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <input type="file" id="file-neutral" accept=".out" onchange="manipularCarregamento('neutral')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                             <div class="flex items-center gap-3 text-xs text-slate-400">
                                 <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-indigo-400 transition-colors">
                                     <i data-lucide="upload" class="w-4 h-4"></i>
                                 </div>
-                                <span id="label-neutral" class="truncate font-medium">Carregar ficheiro neutro...</span>
+                                <span id="label-neutral" class="truncate font-medium">Carregar ficheiro neutro (.out)...</span>
                             </div>
                         </div>
                     </div>
@@ -182,12 +181,12 @@
                             <span id="badge-cation" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
                         </label>
                         <div class="relative border border-dashed border-slate-800 hover:border-emerald-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
-                            <input type="file" id="file-cation" onchange="manipularCarregamento('cation')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <input type="file" id="file-cation" accept=".out" onchange="manipularCarregamento('cation')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                             <div class="flex items-center gap-3 text-xs text-slate-400">
                                 <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-emerald-400 transition-colors">
                                     <i data-lucide="plus-circle" class="w-4 h-4"></i>
                                 </div>
-                                <span id="label-cation" class="truncate font-medium">Carregar ficheiro do Catião...</span>
+                                <span id="label-cation" class="truncate font-medium">Carregar ficheiro do Catião (.out)...</span>
                             </div>
                         </div>
                     </div>
@@ -199,12 +198,12 @@
                             <span id="badge-anion" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
                         </label>
                         <div class="relative border border-dashed border-slate-800 hover:border-rose-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
-                            <input type="file" id="file-anion" onchange="manipularCarregamento('anion')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <input type="file" id="file-anion" accept=".out" onchange="manipularCarregamento('anion')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                             <div class="flex items-center gap-3 text-xs text-slate-400">
                                 <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-rose-400 transition-colors">
                                     <i data-lucide="minus-circle" class="w-4 h-4"></i>
                                 </div>
-                                <span id="label-anion" class="truncate font-medium">Carregar ficheiro do Anião...</span>
+                                <span id="label-anion" class="truncate font-medium">Carregar ficheiro do Anião (.out)...</span>
                             </div>
                         </div>
                     </div>
@@ -684,6 +683,13 @@
 
             if (input && input.files && input.files[0]) {
                 const file = input.files[0];
+
+                if (!file.name.toLowerCase().endsWith('.out')) {
+                    notify(`Formato inválido: O ficheiro ${file.name} deve ter a extensão .out`, 'error');
+                    resetFileInput(type);
+                    return;
+                }
+
                 const text = await file.text();
                 
                 // Salvar o nome base ao carregar o arquivo neutro
@@ -737,7 +743,7 @@
             baseMolData.loaded[type] = false;
         }
 
-        // Parser Avançado de Ficheiros de Saída do ORCA (.out / .log)
+        // Parser Avançado de Ficheiros de Saída do ORCA (.out)
         function parseOrcaOutput(text) {
             const lines = text.split(/\r?\n/);
             let coordinates = [];
