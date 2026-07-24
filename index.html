@@ -606,10 +606,11 @@
             loaded: { neutral: false, cation: false, anion: false },
             files: { neutral: null, cation: null, anion: null },
             atoms: [],          
-            chargeType: 'hirshfeld', // Agora operamos exclusivamente com Hirshfeld
+            chargeType: 'hirshfeld', // Operamos exclusivamente com Hirshfeld
             baseFileName: 'mol', // Nome capturado do arquivo
             normType: 'zero_to_max', // 'relative', 'zero_to_max', 'absolute'
             results: [],
+            bounds: null,
             sortedColumn: 'index',
             sortAscending: true,
             filterText: ''
@@ -749,8 +750,6 @@
         function parseOrcaOutput(text) {
             const lines = text.split(/\r?\n/);
             let coordinates = [];
-            let mullikenCharges = [];
-            let loewdinCharges = [];
             let hirshfeldCharges = [];
 
             // 1. Coordenadas Cartesianas (Busca pela última ocorrência para pegar a geometria final otimizada)
@@ -822,7 +821,7 @@
                     if (match) {
                         hirshfeldCharges[parseInt(match[1])] = parseFloat(match[3]);
                     } else {
-                        break;
+                        continue;
                     }
                 }
             }
@@ -850,6 +849,15 @@
             if (cData.coordinates.length !== totalAtoms || aData.coordinates.length !== totalAtoms) {
                 notify(`Erro Estrutural: O número de átomos nos ficheiros diverge (Neutro: ${totalAtoms}, Catião: ${cData.coordinates.length}, Anião: ${aData.coordinates.length}). Por favor, revise os seus cálculos do ORCA.`, "error");
                 return;
+            }
+
+            // Validação de compatibilidade elemento a elemento
+            for (let i = 0; i < totalAtoms; i++) {
+                if (nData.coordinates[i].element !== cData.coordinates[i].element || 
+                    nData.coordinates[i].element !== aData.coordinates[i].element) {
+                    notify(`Erro de Elementos: O átomo ${i + 1} diverge entre os ficheiros (Neutro: ${nData.coordinates[i].element}, Catião: ${cData.coordinates[i].element}, Anião: ${aData.coordinates[i].element}).`, "error");
+                    return;
+                }
             }
 
             baseMolData.atoms = nData.coordinates;
@@ -898,6 +906,17 @@
                     fZero: fZero
                 });
             }
+
+            // Armazenar limites computados para otimização de performance
+            const fPlusVals = baseMolData.results.map(r => r.fPlus);
+            const fMinusVals = baseMolData.results.map(r => r.fMinus);
+            const fZeroVals = baseMolData.results.map(r => r.fZero);
+
+            baseMolData.bounds = {
+                plus: { min: Math.min(...fPlusVals), max: Math.max(...fPlusVals) },
+                minus: { min: Math.min(...fMinusVals), max: Math.max(...fMinusVals) },
+                zero: { min: Math.min(...fZeroVals), max: Math.max(...fZeroVals) }
+            };
         }
 
         function calcularFormulaEmpirica() {
@@ -1060,15 +1079,11 @@
             const showLabels = document.getElementById('check-labels').checked;
             const showHydrogens = document.getElementById('check-hydrogens').checked;
 
-            // Filtros de limites
-            const fPlusVals = baseMolData.results.map(r => r.fPlus);
-            const fMinusVals = baseMolData.results.map(r => r.fMinus);
-            const fZeroVals = baseMolData.results.map(r => r.fZero);
-
-            const bounds = {
-                plus: { min: Math.min(...fPlusVals), max: Math.max(...fPlusVals) },
-                minus: { min: Math.min(...fMinusVals), max: Math.max(...fMinusVals) },
-                zero: { min: Math.min(...fZeroVals), max: Math.max(...fZeroVals) }
+            // Usar limites em cache ou calcular se necessário
+            const bounds = baseMolData.bounds || {
+                plus: { min: Math.min(...baseMolData.results.map(r => r.fPlus)), max: Math.max(...baseMolData.results.map(r => r.fPlus)) },
+                minus: { min: Math.min(...baseMolData.results.map(r => r.fMinus)), max: Math.max(...baseMolData.results.map(r => r.fMinus)) },
+                zero: { min: Math.min(...baseMolData.results.map(r => r.fZero)), max: Math.max(...baseMolData.results.map(r => r.fZero)) }
             };
 
             // Atualiza limites textuais na interface
@@ -1295,6 +1310,7 @@
                 if (col === 'index') {
                     vA = a.index; vB = b.index;
                 }
+                if (vA === vB) return 0;
                 return asc ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
             });
 
@@ -1408,7 +1424,7 @@
                 document.body.removeChild(link);
 
                 // Restaurar fundo do tema
-                v.setBackgroundColor(0x030712, 1.0); 
+                v.setBackgroundColor(0x0b0f19, 1.0); 
                 v.render();
             });
 
