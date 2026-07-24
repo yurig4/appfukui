@@ -174,10 +174,10 @@
                         </div>
                     </div>
 
-                    <!-- Ficheiro Catião -->
+                    <!-- Ficheiro Cátion -->
                     <div class="space-y-1.5">
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                            <span>Catião (N - 1)</span>
+                            <span>Cátion (N - 1)</span>
                             <span id="badge-cation" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
                         </label>
                         <div class="relative border border-dashed border-slate-800 hover:border-emerald-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
@@ -186,15 +186,15 @@
                                 <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-emerald-400 transition-colors">
                                     <i data-lucide="plus-circle" class="w-4 h-4"></i>
                                 </div>
-                                <span id="label-cation" class="truncate font-medium">Carregar ficheiro do Catião (.out)...</span>
+                                <span id="label-cation" class="truncate font-medium">Carregar ficheiro do Cátion (.out)...</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Ficheiro Anião -->
+                    <!-- Ficheiro Anion -->
                     <div class="space-y-1.5">
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                            <span>Anião (N + 1)</span>
+                            <span>Anion (N + 1)</span>
                             <span id="badge-anion" class="text-[9px] px-1.5 py-0.5 bg-slate-950 rounded text-slate-500 font-mono border border-slate-900">Vazio</span>
                         </label>
                         <div class="relative border border-dashed border-slate-800 hover:border-rose-500/50 rounded-xl p-3 bg-slate-950/40 hover:bg-slate-950/60 transition-all duration-300 cursor-pointer group">
@@ -203,7 +203,7 @@
                                 <div class="p-1.5 bg-slate-900 rounded-lg group-hover:text-rose-400 transition-colors">
                                     <i data-lucide="minus-circle" class="w-4 h-4"></i>
                                 </div>
-                                <span id="label-anion" class="truncate font-medium">Carregar ficheiro do Anião (.out)...</span>
+                                <span id="label-anion" class="truncate font-medium">Carregar ficheiro do Anion (.out)...</span>
                             </div>
                         </div>
                     </div>
@@ -461,10 +461,10 @@
                                     <div class="flex items-center justify-center gap-1.5">q (Neutro) <span id="sort-icon-qNeutral">↕</span></div>
                                 </th>
                                 <th class="p-3.5 font-mono text-center cursor-pointer hover:bg-slate-900" onclick="ordenarTabela('qCation')">
-                                    <div class="flex items-center justify-center gap-1.5">q (Catião) <span id="sort-icon-qCation">↕</span></div>
+                                    <div class="flex items-center justify-center gap-1.5">q (Cátion) <span id="sort-icon-qCation">↕</span></div>
                                 </th>
                                 <th class="p-3.5 font-mono text-center cursor-pointer hover:bg-slate-900" onclick="ordenarTabela('qAnion')">
-                                    <div class="flex items-center justify-center gap-1.5">q (Anião) <span id="sort-icon-qAnion">↕</span></div>
+                                    <div class="flex items-center justify-center gap-1.5">q (Anion) <span id="sort-icon-qAnion">↕</span></div>
                                 </th>
                                 <th class="p-3.5 font-mono text-center text-indigo-400 font-bold bg-indigo-950/10 cursor-pointer hover:bg-indigo-950/20 border-x border-slate-900" onclick="ordenarTabela('fPlus')">
                                     <div class="flex items-center justify-center gap-1.5"><span class="normal-case">f⁺</span> <span id="sort-icon-fPlus">↕</span></div>
@@ -844,7 +844,7 @@
 
             const totalAtoms = nData.coordinates.length;
             if (cData.coordinates.length !== totalAtoms || aData.coordinates.length !== totalAtoms) {
-                notify(`Erro Estrutural: O número de átomos nos ficheiros diverge (Neutro: ${totalAtoms}, Catião: ${cData.coordinates.length}, Anião: ${aData.coordinates.length}). Por favor, revise os seus cálculos do ORCA.`, "error");
+                notify(`Erro Estrutural: O número de átomos nos ficheiros diverge (Neutro: ${totalAtoms}, Cátion: ${cData.coordinates.length}, Anion: ${aData.coordinates.length}). Por favor, revise os seus cálculos do ORCA.`, "error");
                 return;
             }
 
@@ -852,7 +852,7 @@
             for (let i = 0; i < totalAtoms; i++) {
                 if (nData.coordinates[i].element !== cData.coordinates[i].element || 
                     nData.coordinates[i].element !== aData.coordinates[i].element) {
-                    notify(`Erro de Elementos: O átomo ${i + 1} diverge entre os ficheiros (Neutro: ${nData.coordinates[i].element}, Catião: ${cData.coordinates[i].element}, Anião: ${aData.coordinates[i].element}).`, "error");
+                    notify(`Erro de Elementos: O átomo ${i + 1} diverge entre os ficheiros (Neutro: ${nData.coordinates[i].element}, Cátion: ${cData.coordinates[i].element}, Anion: ${aData.coordinates[i].element}).`, "error");
                     return;
                 }
             }
@@ -1712,14 +1712,14 @@
 
             baseMolData.files.cation = parseOrcaOutput(outCation);
             baseMolData.loaded.cation = true;
-            document.getElementById('label-cation').innerText = "bdt_catiao_exemplo.out";
+            document.getElementById('label-cation').innerText = "bdt_cation_exemplo.out";
             document.getElementById('label-cation').className = "truncate text-slate-100 font-bold";
             document.getElementById('badge-cation').innerText = "Exemplo";
             document.getElementById('badge-cation').className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-455 border border-emerald-900/60 rounded font-mono font-bold uppercase";
 
             baseMolData.files.anion = parseOrcaOutput(outAnion);
             baseMolData.loaded.anion = true;
-            document.getElementById('label-anion').innerText = "bdt_aniao_exemplo.out";
+            document.getElementById('label-anion').innerText = "bdt_anion_exemplo.out";
             document.getElementById('label-anion').className = "truncate text-slate-100 font-bold";
             document.getElementById('badge-anion').innerText = "Exemplo";
             document.getElementById('badge-anion').className = "text-[9px] px-1.5 py-0.5 bg-emerald-955/80 text-emerald-455 border border-emerald-900/60 rounded font-mono font-bold uppercase";
