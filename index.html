@@ -445,16 +445,7 @@
                     <button onclick="exportarCSV()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors">
                         <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-indigo-450"></i> CSV
                     </button>
-                    <button onclick="exportarModeloSolicitado('pdb')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exporta B-Factor PDB">
-                        <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-450"></i> PDB (B-Factor)
-                    </button>
-                    <button onclick="exportarModeloSolicitado('xyz')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors">
-                        <i data-lucide="binary" class="w-3.5 h-3.5 text-amber-500"></i> XYZ
-                    </button>
-                    <button onclick="exportarChimeraXdefattr()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exportar para ChimeraX">
-                        <i data-lucide="palette" class="w-3.5 h-3.5 text-rose-500"></i> ChimeraX (.defattr)
-                    </button>
-                    <button onclick="exportarFukuiImagens()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exportar modelos F+, F- e F0 (.png transparente)">
+                    <button onclick="exportarFukuiImagens()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl font-semibold text-slate-300 hover:text-slate-100 flex items-center gap-1.5 transition-colors" title="Exportar modelos Neutro, F+, F- e F0 (.png transparente)">
                         <i data-lucide="image" class="w-3.5 h-3.5 text-pink-500"></i> Imagens Transparentes
                     </button>
                 </div>
@@ -1393,7 +1384,7 @@
             document.body.removeChild(link);
             notify(`Imagem PNG exportada com sucesso: ${filename}`, "success");
         }
-        // Exportar Imagens Transparentes F+, F- e F0
+        // Exportar Imagens Transparentes (Neutra, F+, F- e F0)
         function exportarFukuiImagens() {
             if (baseMolData.results.length === 0) {
                 notify("Não existem resultados computados para exportação.", "error");
@@ -1401,6 +1392,7 @@
             }
 
             const viewerMap = [
+                { id: 0, suffix: 'Neutra' },
                 { id: 1, suffix: 'F+' },
                 { id: 2, suffix: 'F-' },
                 { id: 3, suffix: 'F0' }
@@ -1428,7 +1420,7 @@
                 v.render();
             });
 
-            notify("Imagens F+, F- e F0 exportadas com fundo transparente!", "success");
+            notify("Imagens Neutra, F+, F- e F0 exportadas com fundo transparente!", "success");
         }
 
         // Exportar Relatório CSV de Fukui
